@@ -45,9 +45,9 @@ def _draw_header(draw, width, icon, title, bg, fg, accent,
     """Draw accent bar + icon + title. Returns y position after separator."""
     _draw_accent_bar(draw, width, accent)
     if icon_font is None:
-        icon_font = find_nerd_font(36)
+        icon_font = find_nerd_font(32)
     if title_font is None:
-        title_font = find_font(40, bold=True)
+        title_font = find_font(32, bold=True)
 
     ty = HEADER_Y
     if icon_font:
@@ -177,65 +177,17 @@ def render_notify(title: str, body: str, icon: str,
                   width: int, height: int, bg, accent, fg) -> bytes:
     img, draw = _new_canvas(width, height, bg)
 
-    title_font = find_font(52, bold=True)
     body_font = find_font(34)
-    icon_font = find_nerd_font(52) or find_font(52, bold=True)
 
-    _draw_accent_bar(draw, width, accent)
+    content_y = _draw_header(draw, width, icon, title, bg, fg, accent)
 
-    title_y = ACCENT_BAR_H + PAD
-    icon_gap = 20
-
-    ibbox = draw.textbbox((0, 0), icon, font=icon_font)
-    iw = ibbox[2] - ibbox[0]
-    ih = ibbox[3] - ibbox[1]
-
-    tbbox = draw.textbbox((0, 0), title, font=title_font)
-    th = tbbox[3] - tbbox[1]
-    row_h = max(ih, th)
-
-    first_line_max = width - PAD * 2 - iw - icon_gap
-    rest_max = width - PAD * 2
-    title_lines = []
-    words = title.split()
-    if words:
-        line = words[0]
-        on_first = True
-        max_w = first_line_max
-        for word in words[1:]:
-            test = line + " " + word
-            bbox = draw.textbbox((0, 0), test, font=title_font)
-            if bbox[2] - bbox[0] <= max_w:
-                line = test
-            else:
-                title_lines.append(line)
-                line = word
-                if on_first:
-                    on_first = False
-                    max_w = rest_max
-        title_lines.append(line)
-
-    icon_draw_y = title_y + (row_h - ih) // 2 - ibbox[1]
-    draw.text((PAD, icon_draw_y), icon, fill=accent, font=icon_font)
-
-    cur_y = title_y + (row_h - th) // 2
-    for i, line in enumerate(title_lines):
-        x = PAD + iw + icon_gap if i == 0 else PAD
-        bbox = draw.textbbox((0, 0), line, font=title_font)
-        draw.text((x, cur_y), line, fill=fg, font=title_font)
-        cur_y += bbox[3] - bbox[1] + 8
-
-    sep_y = cur_y + 24
-    _draw_sep(draw, sep_y, width, bg, fg)
-
-    body_y = sep_y + 28
     body_fg = lerp_color(fg, bg, MUTED)
     if body:
         body_lines = word_wrap(draw, body, body_font, width - PAD * 2)
         for line in body_lines:
             bbox = draw.textbbox((0, 0), line or " ", font=body_font)
-            draw.text((PAD, body_y), line, fill=body_fg, font=body_font)
-            body_y += bbox[3] - bbox[1] + 12
+            draw.text((PAD, content_y), line, fill=body_fg, font=body_font)
+            content_y += bbox[3] - bbox[1] + 12
 
     return img_to_webp(img)
 
@@ -332,21 +284,14 @@ def render_weather(data: dict, width: int, height: int,
     wind_dir = current.get("winddir16Point", "")
     precip = current.get("precipMM", "0")
 
-    _draw_accent_bar(draw, width, accent)
+    content_y = _draw_header(draw, width, "\uf124", location, bg, fg, accent)
 
-    loc_y = 32
-    if detail_icon_font:
-        draw.text((PAD, loc_y), "\uf124", fill=accent, font=detail_icon_font)
-    draw.text((PAD + 36, loc_y), location,
-              fill=lerp_color(fg, bg, MUTED), font=label_font)
-
-    row_y = 100
     icon_char = WEATHER_ICONS.get(code, "\ue302")
     if icon_font:
-        draw.text((PAD, row_y), icon_char, fill=accent, font=icon_font)
-    draw.text((PAD + 140, row_y - 10), f"{temp}{unit_sym}", fill=fg, font=temp_font)
+        draw.text((PAD, content_y), icon_char, fill=accent, font=icon_font)
+    draw.text((PAD + 140, content_y - 10), f"{temp}{unit_sym}", fill=fg, font=temp_font)
 
-    desc_y = row_y + 130
+    desc_y = content_y + 130
     draw.text((PAD, desc_y), desc, fill=fg, font=desc_font)
 
     feels_y = desc_y + 50
@@ -442,8 +387,6 @@ def render_sysmon(width: int, height: int, bg, fg, accent) -> bytes:
 
     img, draw = _new_canvas(width, height, bg)
 
-    icon_font = find_nerd_font(32)
-    title_font = find_font(36, bold=True)
     label_font = find_font(22)
     value_font = find_font(26)
     pct_font = find_font(28, bold=True)
@@ -459,7 +402,6 @@ def render_sysmon(width: int, height: int, bg, fg, accent) -> bytes:
     info_str = f"{hostname}  •  up {uptime_str}"
 
     _draw_header(draw, width, "\uf108", "System Monitor", bg, fg, accent,
-                 icon_font=icon_font, title_font=title_font,
                  right_text=info_str, right_font=label_font)
 
     cpu_pct = psutil.cpu_percent(interval=0.5)
@@ -773,11 +715,10 @@ def render_qrcode(data: str, label: str, width: int, height: int,
 
     img, draw = _new_canvas(width, height, bg)
 
-    label_font = find_font(32, bold=True)
     data_font = find_font(22)
 
     content_y = _draw_header(draw, width, "\uf029", label or "Scan QR Code",
-                             bg, fg, accent, title_font=label_font)
+                             bg, fg, accent)
 
     qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M,
                         box_size=10, border=2)
@@ -821,30 +762,23 @@ def _fmt_count(n: int) -> str:
     return str(n)
 
 
-LANG_COLORS = {
-    "Python": parse_color("base0d"), "JavaScript": parse_color("base0a"),
-    "TypeScript": parse_color("base0d"), "Rust": parse_color("base09"),
-    "Go": parse_color("base0c"), "Java": parse_color("base09"),
-    "C": parse_color("base04"), "C++": parse_color("base08"),
-    "Ruby": parse_color("base08"), "Shell": parse_color("base0b"),
-}
-
 
 def render_github(repos: list[dict], width: int, height: int,
                   bg, fg, accent) -> bytes:
     img, draw = _new_canvas(width, height, bg)
 
-    repo_font = find_font(32, bold=True)
-    value_font = find_font(28, bold=True)
-    label_font = find_font(20)
-    lang_font = find_font(24)
+    repo_font = find_font(26)
+    value_font = find_font(28)
+
     detail_icon_font = find_nerd_font(26)
 
     content_y = _draw_header(draw, width, "\uf09b", "GitHub Stats",
                              bg, fg, accent)
 
-    card_y = content_y + 6
-    card_h = min(160, (height - card_y - PAD) // max(len(repos), 1))
+    card_y = content_y
+    card_pad = PAD // 2
+    card_gap = card_pad
+    card_h = card_pad + 30 + 8 + 32 + card_pad  # top + name + gap + stats + bottom
 
     stat_icons = {
         "stars": "\uf005", "forks": "\uf126",
@@ -852,20 +786,12 @@ def render_github(repos: list[dict], width: int, height: int,
     }
 
     for i, repo in enumerate(repos):
-        y = card_y + i * card_h
-        draw.rounded_rectangle([PAD, y, width - PAD, y + card_h - 12],
+        y = card_y + i * (card_h + card_gap)
+        draw.rounded_rectangle([PAD, y, width - PAD, y + card_h],
                                radius=16, fill=lerp_color(bg, fg, CARD_BG))
 
-        draw.text((PAD + 20, y + 14), repo["full_name"], fill=fg, font=repo_font)
-
-        lang = repo.get("language") or ""
-        if lang:
-            lc = LANG_COLORS.get(lang, lerp_color(fg, bg, MUTED))
-            lx = width - PAD - 20
-            lw, _ = text_size(draw, lang, lang_font)
-            draw.ellipse([lx - lw - 20, y + 18, lx - lw - 8, y + 30], fill=lc)
-            draw.text((lx - lw, y + 16), lang,
-                      fill=lerp_color(fg, bg, MUTED), font=lang_font)
+        draw.text((PAD + card_pad, y + card_pad), repo["full_name"],
+                  fill=lerp_color(fg, bg, MUTED), font=repo_font)
 
         stats = [
             ("stars", repo["stargazers_count"]),
@@ -873,36 +799,24 @@ def render_github(repos: list[dict], width: int, height: int,
             ("issues", repo["open_issues_count"]),
             ("watchers", repo["subscribers_count"]),
         ]
-        sx = PAD + 20
-        stat_y = y + 56
-        col_w = (width - PAD * 2 - 40) // 4
+        sx = PAD + card_pad
+        stat_y = y + card_pad + 30 + 8
+        col_w = (width - PAD * 2 - card_pad * 2) // 4
 
         for j, (key, val) in enumerate(stats):
             col_cx = sx + j * col_w + col_w // 2
             val_str = _fmt_count(val)
             vw, vh = text_size(draw, val_str, value_font)
-            lw, _ = text_size(draw, key, label_font)
 
             icon_w, icon_gap = 28, 4
             total_w = icon_w + icon_gap + vw
             ix = col_cx - total_w // 2
 
             if detail_icon_font:
-                draw.text((ix, stat_y + 2), stat_icons[key],
+                draw.text((ix, stat_y), stat_icons[key],
                           fill=accent, font=detail_icon_font)
             draw.text((ix + icon_w + icon_gap, stat_y), val_str,
                       fill=fg, font=value_font)
-            draw.text((col_cx - lw // 2, stat_y + vh + 6), key,
-                      fill=lerp_color(fg, bg, DIM), font=label_font)
-
-        desc = repo.get("description") or ""
-        if desc and card_h > 120:
-            desc_y = stat_y + 66
-            max_w = width - PAD * 2 - 40
-            while text_size(draw, desc, lang_font)[0] > max_w and len(desc) > 8:
-                desc = desc[:-4] + "…"
-            draw.text((PAD + 20, desc_y), desc,
-                      fill=lerp_color(fg, bg, DIM), font=lang_font)
 
     return img_to_webp(img)
 
