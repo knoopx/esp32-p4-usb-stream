@@ -14,9 +14,10 @@ from PIL import Image
 from display import parse_color
 from widgets import (
     parse_gauge_spec, parse_progress_spec, render_calendar, render_clock,
-    render_gauges, render_github, render_image, render_mail, render_message,
-    render_notify, render_nowplaying, render_progress, render_qrcode,
-    render_sysmon, render_timer, render_weather,
+    render_gauges, render_github, render_image, render_list, render_mail,
+    render_message, render_month_calendar, render_notify, render_nowplaying,
+    render_progress, render_qrcode, render_sysmon, render_table,
+    render_timer, render_weather,
 )
 
 W, H = 720, 720
@@ -147,5 +148,31 @@ items = [parse_progress_spec(s) for s in [
     "Build:75:100", "Tests:42:50", "Deploy:30:100"]]
 save("progress", render_progress(
     items, "bar", "CI Pipeline", W, H, BG, FG, accent("base0A")))
+
+# --- table ---
+save("table", render_table(
+    ["Name", "Role", "Status"],
+    [["Alice", "Backend", "Active"],
+     ["Bob", "Frontend", "Active"],
+     ["Carol", "DevOps", "On Leave"],
+     ["Dave", "QA", "Active"],
+     ["Eve", "Design", "Active"],
+     ["Frank", "Backend", "Inactive"]],
+    "Team Roster", W, H, BG, FG, accent("base0D")))
+
+# --- list ---
+save("list", render_list(
+    [{"text": "Buy groceries", "secondary": "Milk, bread, eggs", "icon": "\uf07a"},
+     {"text": "Review PR #284", "secondary": "Auth refactor", "icon": "\uf126", "value": "3"},
+     {"text": "Deploy staging", "secondary": "v1.2.3 release candidate", "icon": "\uf0e7"},
+     {"text": "Team standup", "secondary": "09:00 – Google Meet", "icon": "\uf073"},
+     {"text": "Write docs", "secondary": "API reference update", "icon": "\uf15c"},
+     {"text": "Fix CI pipeline", "secondary": "Flaky test in auth module", "icon": "\uf085", "value": "!"},
+     {"text": "Book flights", "secondary": "Conference in Berlin", "icon": "\uf072"}],
+    "To Do", W, H, BG, FG, accent("base0B")))
+
+# --- month calendar ---
+save("monthcal", render_month_calendar(
+    2026, 3, [5, 10, 15, 22, 28], W, H, BG, FG, accent("base0A")))
 
 print("Done.")
