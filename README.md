@@ -50,8 +50,11 @@ Rust firmware for the **Waveshare ESP32-P4-WIFI6-Touch-LCD-4B** that turns it in
 ### Message
 ![Message](screenshots/message.png)
 
-### Progress
-![Progress](screenshots/progress.png)
+### Progress Bar
+![Progress Bar](screenshots/progress-bar.png)
+
+### Progress Ring
+![Progress Ring](screenshots/progress-ring.png)
 
 ### Table
 ![Table](screenshots/table.png)
@@ -61,6 +64,18 @@ Rust firmware for the **Waveshare ESP32-P4-WIFI6-Touch-LCD-4B** that turns it in
 
 ### Month Calendar
 ![Month Calendar](screenshots/monthcal.png)
+
+### Departures
+![Departures](screenshots/departures.png)
+
+### Stocks
+![Stocks](screenshots/stocks.png)
+
+### Hacker News
+![Hacker News](screenshots/hackernews.png)
+
+### Monitor
+![Monitor](screenshots/monitor.png)
 
 ### Image
 ![Image](screenshots/image.png)
@@ -93,6 +108,10 @@ Default port: `/dev/ttyACM0`. Override with `--port` / `-p`.
 | **progress** | `waveshare-display progress -i "Build:75:100" -i "Test:90%" --style bar` | Progress bars or circles |
 | **table** | `waveshare-display table --json '[{"Name":"Alice","Score":"95"}]'` | Tabular data display |
 | **list** | `waveshare-display list -i "Buy milk:From store" --title "To Do"` | List with icons and secondary text |
+| **departures** | `waveshare-display departures --station "My Station" --station-id 12345` | Train departure board (Rodalies API) |
+| **stocks** | `waveshare-display stocks AAPL MSFT BTC-USD` | Stock/crypto ticker via Yahoo Finance |
+| **hackernews** | `waveshare-display hackernews --count 8` | Hacker News top stories |
+| **monitor** | `waveshare-display monitor -s "App=https://example.com"` | Site uptime monitor |
 | **monthcal** | `waveshare-display monthcal --highlight 15 --highlight 20` | Month calendar grid |
 
 All subcommands support `--fg`, `--bg`, `--accent` color customization (name or `#RRGGBB`).

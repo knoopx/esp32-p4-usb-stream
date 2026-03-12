@@ -19,6 +19,10 @@ Usage:
     waveshare-display table --json '[{"Name":"Alice","Score":"95"},{"Name":"Bob","Score":"87"}]'
     waveshare-display list -i "Buy milk:From the store" -i "Walk dog" --title "To Do"
     waveshare-display monthcal --highlight 15 --highlight 20
+    waveshare-display departures --station "My Station" --station-id 12345
+    waveshare-display stocks AAPL MSFT BTC-USD
+    waveshare-display hackernews --count 8
+    waveshare-display monitor -s "My App=https://example.com" -s "Google=https://google.com"
     waveshare-display -p /dev/ttyACM1 clock  # custom port
 """
 
@@ -36,10 +40,12 @@ from display import (DISPLAY_H, DISPLAY_W, connect, load_theme, parse_color,
                      send_frame)
 from widgets import (
     parse_gauge_spec, parse_progress_spec, render_calendar, render_clock,
-    render_gauges, render_github, render_image, render_list, render_mail,
-    render_message, render_month_calendar, render_notify, render_nowplaying,
-    render_progress, render_qrcode, render_sysmon, render_table,
-    render_test_pattern, render_timer, render_weather,
+    render_departures, render_gauges, render_github, render_hackernews,
+    render_image, render_list, render_mail, render_message,
+    render_monitor, render_month_calendar, render_notify,
+    render_nowplaying, render_progress, render_qrcode, render_stocks,
+    render_sysmon, render_table, render_test_pattern, render_timer,
+    render_weather,
 )
 
 
@@ -370,6 +376,189 @@ def cmd_list(args):
     result(connect(args.port), data, f"{len(items)} items")
 
 
+def cmd_departures(args):
+    import urllib.request
+
+    station = args.station
+    departures = []
+
+    if args.json:
+        departures = json.loads(args.json)
+    elif args.stdin:
+        departures = json.loads(sys.stdin.read())
+    elif args.station_id:
+        try:
+            minutes = args.minutes or 120
+            api_url = (f"https://serveisgrs.rodalies.gencat.cat/api/departures"
+                       f"?stationId={args.station_id}&minute={minutes}"
+                       f"&fullResponse=true&lang=en")
+            req = urllib.request.Request(api_url,
+                                        headers={"User-Agent": "waveshare-display"})
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                raw = json.loads(resp.read())
+            for train in raw.get("trains", [])[:12]:
+                dep_time = train.get("departureDateHourSelectedStation", "")
+                try:
+                    dep_time = datetime.fromisoformat(dep_time).strftime("%H:%M")
+                except (ValueError, TypeError):
+                    pass
+                dest = train.get("destinationStation", {})
+                if isinstance(dest, dict):
+                    dest = dest.get("name", "")
+                departures.append({
+                    "time": dep_time,
+                    "destination": dest,
+                    "line": train.get("line", ""),
+                    "delay": train.get("delay", 0),
+                })
+        except Exception as e:
+            print(f"Error fetching departures: {e}", file=sys.stderr)
+
+    if not departures:
+        print("No departures (provide --json, --stdin, or --station-id)",
+              file=sys.stderr)
+
+    fg, bg, accent = resolve_colors(args)
+    data = render_departures(departures, station, DISPLAY_W, DISPLAY_H,
+                             bg, fg, accent)
+    result(connect(args.port), data, f"{len(departures)} departures")
+
+
+def cmd_stocks(args):
+    import urllib.request
+
+    tickers = []
+
+    if args.json:
+        tickers = json.loads(args.json)
+    elif args.stdin:
+        tickers = json.loads(sys.stdin.read())
+    else:
+        for symbol in args.symbols:
+            try:
+                url = (f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}"
+                       f"?range=1d&interval=5m")
+                req = urllib.request.Request(url, headers={
+                    "User-Agent": "waveshare-display"})
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    raw = json.loads(resp.read())
+                result_data = raw["chart"]["result"][0]
+                meta = result_data["meta"]
+                price = meta["regularMarketPrice"]
+                prev_close = meta.get("chartPreviousClose", price)
+                change_pct = ((price - prev_close) / prev_close * 100
+                              if prev_close else 0)
+                closes = (result_data.get("indicators", {})
+                          .get("quote", [{}])[0]
+                          .get("close", []))
+                sparkline = [c for c in closes if c is not None]
+                tickers.append({
+                    "symbol": symbol.upper(),
+                    "price": price,
+                    "change_pct": change_pct,
+                    "sparkline": sparkline,
+                })
+            except Exception as e:
+                print(f"Error fetching {symbol}: {e}", file=sys.stderr)
+
+    if not tickers:
+        print("No ticker data", file=sys.stderr)
+        sys.exit(1)
+
+    fg, bg, accent = resolve_colors(args)
+    data = render_stocks(tickers, DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    names = ", ".join(t["symbol"] for t in tickers)
+    result(connect(args.port), data, names)
+
+
+def cmd_hackernews(args):
+    import urllib.request
+    from concurrent.futures import ThreadPoolExecutor
+
+    try:
+        url = "https://hacker-news.firebaseio.com/v0/topstories.json"
+        req = urllib.request.Request(url, headers={"User-Agent": "waveshare-display"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            ids = json.loads(resp.read())[:args.count]
+    except Exception as e:
+        print(f"Error fetching HN top stories: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    def fetch_item(item_id):
+        try:
+            u = f"https://hacker-news.firebaseio.com/v0/item/{item_id}.json"
+            r = urllib.request.Request(u, headers={"User-Agent": "waveshare-display"})
+            with urllib.request.urlopen(r, timeout=10) as resp:
+                return json.loads(resp.read())
+        except Exception:
+            return None
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        items = list(pool.map(fetch_item, ids))
+
+    stories = []
+    now = time.time()
+    for item in items:
+        if not item or item.get("type") != "story":
+            continue
+        age_s = now - item.get("time", now)
+        if age_s < 3600:
+            age = f"{int(age_s / 60)}m"
+        elif age_s < 86400:
+            age = f"{int(age_s / 3600)}h"
+        else:
+            age = f"{int(age_s / 86400)}d"
+        stories.append({
+            "title": item.get("title", ""),
+            "score": item.get("score", 0),
+            "comments": item.get("descendants", 0),
+            "age": age,
+        })
+
+    fg, bg, accent = resolve_colors(args)
+    data = render_hackernews(stories, DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    result(connect(args.port), data, f"{len(stories)} stories")
+
+
+def cmd_monitor(args):
+    import urllib.request
+
+    sites = []
+    for spec in args.site:
+        parts = spec.split("=", 1)
+        title = parts[0]
+        url = parts[1] if len(parts) > 1 else parts[0]
+        if not url.startswith("http"):
+            url = f"https://{url}"
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "waveshare-display"})
+            t0 = time.monotonic()
+            with urllib.request.urlopen(req, timeout=args.timeout) as resp:
+                resp.read()
+                status = resp.status
+            elapsed_ms = int((time.monotonic() - t0) * 1000)
+            sites.append({
+                "title": title,
+                "url": url,
+                "up": 200 <= status < 400,
+                "status": status,
+                "response_ms": elapsed_ms,
+            })
+        except Exception:
+            sites.append({
+                "title": title,
+                "url": url,
+                "up": False,
+                "status": 0,
+                "response_ms": 0,
+            })
+
+    fg, bg, accent = resolve_colors(args)
+    data = render_monitor(sites, DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    up = sum(1 for s in sites if s["up"])
+    result(connect(args.port), data, f"{up}/{len(sites)} up")
+
+
 def cmd_monthcal(args):
     from datetime import datetime as dt
     fg, bg, accent = resolve_colors(args)
@@ -500,6 +689,38 @@ def main():
     p.add_argument("--title", default="", help="Optional header title")
     common_args(p)
 
+    # departures
+    p = sub.add_parser("departures", help="Train departure board")
+    p.add_argument("--station", default="Departures", help="Station name for header")
+    p.add_argument("--station-id", dest="station_id", default="",
+                   help="Rodalies station ID")
+    p.add_argument("--minutes", type=int, default=120,
+                   help="Lookahead window in minutes (default: 120)")
+    p.add_argument("--json", help="JSON array of departures")
+    p.add_argument("--stdin", action="store_true", help="Read JSON from stdin")
+    common_args(p)
+
+    # stocks
+    p = sub.add_parser("stocks", help="Stock/crypto ticker")
+    p.add_argument("symbols", nargs="*", help="Ticker symbols (e.g. AAPL BTC-USD)")
+    p.add_argument("--json", help="JSON array of ticker data")
+    p.add_argument("--stdin", action="store_true", help="Read JSON from stdin")
+    common_args(p)
+
+    # hackernews
+    p = sub.add_parser("hackernews", aliases=["hn"], help="Hacker News top stories")
+    p.add_argument("--count", type=int, default=10,
+                   help="Number of stories to fetch (default: 10)")
+    common_args(p)
+
+    # monitor
+    p = sub.add_parser("monitor", help="Site uptime monitor")
+    p.add_argument("-s", "--site", action="append", required=True,
+                   help="'Title=https://url' or just URL (repeat for each)")
+    p.add_argument("--timeout", type=int, default=10,
+                   help="Request timeout in seconds (default: 10)")
+    common_args(p)
+
     # monthcal
     p = sub.add_parser("monthcal", help="Month calendar grid")
     p.add_argument("--year", type=int, default=0, help="Year (default: current)")
@@ -518,7 +739,9 @@ def main():
         "nowplaying": cmd_nowplaying, "mail": cmd_mail, "calendar": cmd_calendar,
         "github": cmd_github, "timer": cmd_timer, "gauge": cmd_gauge,
         "qrcode": cmd_qrcode, "progress": cmd_progress, "table": cmd_table,
-        "list": cmd_list, "monthcal": cmd_monthcal,
+        "list": cmd_list, "departures": cmd_departures, "stocks": cmd_stocks,
+        "hackernews": cmd_hackernews, "hn": cmd_hackernews,
+        "monitor": cmd_monitor, "monthcal": cmd_monthcal,
     }
     commands[args.command](args)
 

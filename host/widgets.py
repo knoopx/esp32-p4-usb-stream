@@ -77,6 +77,20 @@ def _draw_timestamp(draw, width, height, bg, fg, fmt="%H:%M"):
               fill=lerp_color(fg, bg, DIM), font=font)
 
 
+def _draw_badge(draw, x, y, text, font, bg_color, fg_color, radius=8,
+                pad_x=10, pad_y=6):
+    """Draw a rounded badge with centered text. Returns badge width."""
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw = bbox[2] - bbox[0]
+    th = bbox[3] - bbox[1]
+    w = tw + pad_x * 2
+    h = th + pad_y * 2
+    draw.rounded_rectangle([x, y, x + w, y + h], radius=radius, fill=bg_color)
+    draw.text((x + pad_x - bbox[0], y + pad_y - bbox[1]), text,
+              fill=fg_color, font=font)
+    return w
+
+
 def _draw_empty_state(draw, width, height, icon, message, bg, fg):
     y = height // 2 - 40
     big = find_nerd_font(80)
@@ -603,13 +617,15 @@ def render_timer(remaining: int, total: int, label: str,
     tw, th = text_size(draw, time_str, time_font)
     draw.text((cx - tw // 2, cy - th // 2 - 30), time_str, fill=fg, font=time_font)
 
+    label_y = cy + th // 2
     if label:
-        lw, _ = text_size(draw, label, label_font)
-        draw.text((cx - lw // 2, cy + th // 2 - 10), label, fill=accent, font=label_font)
+        lw, lh = text_size(draw, label, label_font)
+        draw.text((cx - lw // 2, label_y), label, fill=accent, font=label_font)
+        label_y += lh + 8
 
     pct_str = f"{int(pct * 100)}%"
     pw, _ = text_size(draw, pct_str, sub_font)
-    draw.text((cx - pw // 2, cy + th // 2 + 34), pct_str,
+    draw.text((cx - pw // 2, label_y), pct_str,
               fill=lerp_color(fg, bg, DIM), font=sub_font)
 
     return img_to_webp(img)
@@ -1263,6 +1279,381 @@ def render_list(items: list[dict], title: str,
 
 import calendar as _cal
 
+
+# --- departures ---
+
+def render_departures(departures: list[dict], station: str,
+                      width: int, height: int, bg, fg, accent) -> bytes:
+    """Render train departure board.
+
+    Each departure: {"time": str, "destination": str, "line": str?, "delay": int?}
+    """
+    img, draw = _new_canvas(width, height, bg)
+
+    dest_font = find_font(28, bold=True)
+    time_font = find_font(28)
+    line_font = find_font(22, bold=True)
+    delay_font = find_font(22)
+
+    content_y = _draw_header(draw, width, "\uf238", station or "Departures",
+                             bg, fg, accent)
+
+    if not departures:
+        _draw_empty_state(draw, width, height, "\uf238", "No departures", bg, fg)
+        return img_to_webp(img)
+
+    available = height - content_y - PAD
+    row_h = min(70, available // max(len(departures), 1))
+    max_rows = available // row_h
+    visible = departures[:max_rows]
+
+    # pre-compute widest badge to align all destinations
+    max_badge_w = 0
+    has_badges = False
+    for dep in visible:
+        line = dep.get("line", "")
+        if line:
+            has_badges = True
+            bbox = draw.textbbox((0, 0), line, font=line_font)
+            w = (bbox[2] - bbox[0]) + 20  # badge pad_x * 2
+            max_badge_w = max(max_badge_w, w)
+
+    dest_x = PAD + max_badge_w + PAD if has_badges else PAD
+
+    for i, dep in enumerate(visible):
+        y = content_y + i * row_h
+
+        # line badge (right-aligned to dest_x)
+        line = dep.get("line", "")
+        if line:
+            color = _palette()[i % len(_palette())]
+            bbox = draw.textbbox((0, 0), line, font=line_font)
+            bw = (bbox[2] - bbox[0]) + 20
+            badge_x = dest_x - PAD - bw
+            _draw_badge(draw, badge_x, y + 2, line, line_font, color, bg)
+
+        # departure time (right-aligned)
+        dep_time = dep.get("time", "")
+        tw, _ = text_size(draw, dep_time, time_font)
+        time_x = width - PAD - tw
+        draw.text((time_x, y + 4), dep_time, fill=fg, font=time_font)
+
+        # delay
+        delay = dep.get("delay", 0)
+        delay_x = time_x
+        if delay and delay > 0:
+            delay_str = f"+{delay}'"
+            dw, _ = text_size(draw, delay_str, delay_font)
+            delay_x = time_x - dw - 12
+            draw.text((delay_x, y + 8), delay_str,
+                      fill=parse_color("base08"), font=delay_font)
+
+        # destination
+        dest = dep.get("destination", "")
+        max_dest_w = delay_x - dest_x - 12
+        while text_size(draw, dest, dest_font)[0] > max_dest_w and len(dest) > 2:
+            dest = dest[:-4] + "…"
+        draw.text((dest_x, y + 4), dest, fill=fg, font=dest_font)
+
+        # secondary info line
+        platform = dep.get("platform", "")
+        if platform:
+            draw.text((dest_x, y + 36), f"Platform {platform}",
+                      fill=lerp_color(fg, bg, MUTED), font=delay_font)
+
+        if i < min(len(departures), max_rows) - 1:
+            draw.line([PAD, y + row_h - 4, width - PAD, y + row_h - 4],
+                      fill=lerp_color(bg, fg, SEP), width=1)
+
+    shown = min(len(departures), max_rows)
+    if len(departures) > shown:
+        count_font = find_font(20)
+        count_str = f"{shown}/{len(departures)} departures"
+        cw, _ = text_size(draw, count_str, count_font)
+        draw.text((width - PAD - cw, height - PAD + 4), count_str,
+                  fill=lerp_color(fg, bg, DIM), font=count_font)
+
+    _draw_timestamp(draw, width, height, bg, fg)
+
+    return img_to_webp(img)
+
+
+# --- stocks ---
+
+def _draw_sparkline(draw, x, y, w, h, values, color, bg):
+    """Draw a mini line chart from a list of floats."""
+    if len(values) < 2:
+        return
+    mn, mx = min(values), max(values)
+    span = mx - mn if mx != mn else 1
+    points = []
+    for i, v in enumerate(values):
+        px = x + i * w / (len(values) - 1)
+        py = y + h - (v - mn) / span * h
+        points.append((px, py))
+    draw.line(points, fill=color, width=2)
+
+
+def render_stocks(tickers: list[dict], width: int, height: int,
+                  bg, fg, accent) -> bytes:
+    """Render stock/crypto ticker cards.
+
+    Each ticker: {"symbol": str, "price": float, "change_pct": float,
+                  "sparkline": list[float]?}
+    """
+    img, draw = _new_canvas(width, height, bg)
+
+    symbol_font = find_font(26, bold=True)
+    price_font = find_font(30, bold=True)
+    change_font = find_font(24)
+    detail_icon_font = find_nerd_font(22)
+
+    content_y = _draw_header(draw, width, "\uf201", "Market",
+                             bg, fg, accent)
+
+    if not tickers:
+        _draw_empty_state(draw, width, height, "\uf201", "No data", bg, fg)
+        return img_to_webp(img)
+
+    card_pad = PAD // 2
+    card_gap = card_pad
+    spark_h = 40
+    card_h = card_pad + 32 + 8 + spark_h + 8 + 28 + card_pad
+    available = height - content_y - PAD
+    max_cards = available // (card_h + card_gap)
+
+    green = parse_color("base0b")
+    red = parse_color("base08")
+
+    for i, t in enumerate(tickers[:max_cards]):
+        y = content_y + i * (card_h + card_gap)
+        draw.rounded_rectangle([PAD, y, width - PAD, y + card_h],
+                               radius=16, fill=lerp_color(bg, fg, CARD_BG))
+
+        change_pct = t.get("change_pct", 0)
+        is_up = change_pct >= 0
+        trend_color = green if is_up else red
+
+        # symbol
+        draw.text((PAD + card_pad, y + card_pad), t["symbol"],
+                  fill=lerp_color(fg, bg, MUTED), font=symbol_font)
+
+        # price (right-aligned on top row)
+        price_str = f"${t['price']:,.2f}" if t["price"] >= 1 else f"${t['price']:.4f}"
+        pw, _ = text_size(draw, price_str, price_font)
+        draw.text((width - PAD - card_pad - pw, y + card_pad),
+                  price_str, fill=fg, font=price_font)
+
+        # sparkline
+        spark_y = y + card_pad + 32 + 8
+        spark_w = width - PAD * 2 - card_pad * 2
+        sparkline = t.get("sparkline", [])
+        if sparkline:
+            _draw_sparkline(draw, PAD + card_pad, spark_y,
+                            spark_w, spark_h, sparkline, trend_color, bg)
+        else:
+            mid_y = spark_y + spark_h // 2
+            draw.line([PAD + card_pad, mid_y, PAD + card_pad + spark_w, mid_y],
+                      fill=lerp_color(bg, fg, TRACK), width=2)
+
+        # change percentage
+        change_y = spark_y + spark_h + 8
+        arrow = "\uf062" if is_up else "\uf063"  # up/down arrows
+        change_str = f"{'+' if is_up else ''}{change_pct:.2f}%"
+
+        if detail_icon_font:
+            draw.text((PAD + card_pad, change_y), arrow,
+                      fill=trend_color, font=detail_icon_font)
+        draw.text((PAD + card_pad + 28, change_y), change_str,
+                  fill=trend_color, font=change_font)
+
+    shown = min(len(tickers), max_cards)
+    if len(tickers) > shown:
+        count_font = find_font(20)
+        count_str = f"{shown}/{len(tickers)} tickers"
+        cw, _ = text_size(draw, count_str, count_font)
+        draw.text((width - PAD - cw, height - PAD + 4), count_str,
+                  fill=lerp_color(fg, bg, DIM), font=count_font)
+
+    _draw_timestamp(draw, width, height, bg, fg)
+
+    return img_to_webp(img)
+
+
+# --- hackernews ---
+
+def render_hackernews(stories: list[dict], width: int, height: int,
+                      bg, fg, accent) -> bytes:
+    """Render Hacker News top stories.
+
+    Each story: {"title": str, "score": int, "comments": int, "age": str}
+    """
+    img, draw = _new_canvas(width, height, bg)
+
+    title_font = find_font(26)
+    meta_font = find_font(22)
+    rank_font = find_font(22, bold=True)
+    detail_icon_font = find_nerd_font(20)
+
+    content_y = _draw_header(draw, width, "\uf1d4", "Hacker News",
+                             bg, fg, accent)
+
+    if not stories:
+        _draw_empty_state(draw, width, height, "\uf1d4", "No stories", bg, fg)
+        return img_to_webp(img)
+
+    available = height - content_y - PAD
+    row_h = min(64, available // max(len(stories), 1))
+    max_rows = available // row_h
+
+    for i, story in enumerate(stories[:max_rows]):
+        y = content_y + i * row_h
+
+        # rank number
+        rank_str = f"{i + 1}."
+        rw, _ = text_size(draw, rank_str, rank_font)
+        draw.text((PAD, y + 2), rank_str,
+                  fill=lerp_color(fg, bg, DIM), font=rank_font)
+
+        # title
+        text_x = PAD + rw + 10
+        max_title_w = width - PAD - text_x
+        title = story["title"]
+        while text_size(draw, title, title_font)[0] > max_title_w and len(title) > 2:
+            title = title[:-4] + "…"
+        draw.text((text_x, y), title, fill=fg, font=title_font)
+
+        # meta line: score, comments, age
+        meta_y = y + 30
+        meta_parts = []
+
+        score = story.get("score", 0)
+        comments = story.get("comments", 0)
+        age = story.get("age", "")
+
+        mx = text_x
+        if detail_icon_font:
+            draw.text((mx, meta_y + 2), "\uf062",
+                      fill=accent, font=detail_icon_font)
+            mx += 20
+        score_str = str(score)
+        draw.text((mx, meta_y), score_str,
+                  fill=lerp_color(fg, bg, MUTED), font=meta_font)
+        mx += text_size(draw, score_str, meta_font)[0] + 16
+
+        if detail_icon_font:
+            draw.text((mx, meta_y + 2), "\uf075",
+                      fill=lerp_color(fg, bg, DIM), font=detail_icon_font)
+            mx += 20
+        comment_str = str(comments)
+        draw.text((mx, meta_y), comment_str,
+                  fill=lerp_color(fg, bg, MUTED), font=meta_font)
+        mx += text_size(draw, comment_str, meta_font)[0] + 16
+
+        if age:
+            draw.text((mx, meta_y), age,
+                      fill=lerp_color(fg, bg, DIM), font=meta_font)
+
+        if i < min(len(stories), max_rows) - 1:
+            draw.line([text_x, y + row_h - 4, width - PAD, y + row_h - 4],
+                      fill=lerp_color(bg, fg, SEP), width=1)
+
+    shown = min(len(stories), max_rows)
+    if len(stories) > shown:
+        count_font = find_font(20)
+        count_str = f"{shown}/{len(stories)} stories"
+        cw, _ = text_size(draw, count_str, count_font)
+        draw.text((width - PAD - cw, height - PAD + 4), count_str,
+                  fill=lerp_color(fg, bg, DIM), font=count_font)
+
+    _draw_timestamp(draw, width, height, bg, fg)
+
+    return img_to_webp(img)
+
+
+# --- monitor ---
+
+def render_monitor(sites: list[dict], width: int, height: int,
+                   bg, fg, accent) -> bytes:
+    """Render site uptime monitor.
+
+    Each site: {"title": str, "url": str, "up": bool, "status": int,
+                "response_ms": int}
+    """
+    img, draw = _new_canvas(width, height, bg)
+
+    title_font = find_font(28, bold=True)
+    url_font = find_font(22)
+    status_font = find_font(24)
+    detail_icon_font = find_nerd_font(24)
+
+    up_count = sum(1 for s in sites if s.get("up"))
+    header_right = f"{up_count}/{len(sites)} up"
+    content_y = _draw_header(draw, width, "\uf21b", "Monitor",
+                             bg, fg, accent,
+                             right_text=header_right, right_font=status_font)
+
+    if not sites:
+        _draw_empty_state(draw, width, height, "\uf21b", "No sites", bg, fg)
+        return img_to_webp(img)
+
+    green = parse_color("base0b")
+    red = parse_color("base08")
+
+    available = height - content_y - PAD
+    row_h = min(80, available // max(len(sites), 1))
+    max_rows = available // row_h
+
+    for i, site in enumerate(sites[:max_rows]):
+        y = content_y + i * row_h
+        is_up = site.get("up", False)
+        dot_color = green if is_up else red
+
+        # status dot
+        dot_r = 8
+        dot_cx = PAD + dot_r
+        dot_cy = y + 16
+        draw.ellipse([dot_cx - dot_r, dot_cy - dot_r,
+                      dot_cx + dot_r, dot_cy + dot_r], fill=dot_color)
+
+        # title
+        text_x = PAD + dot_r * 2 + 16
+        draw.text((text_x, y + 2), site["title"], fill=fg, font=title_font)
+
+        # response time (right-aligned)
+        if is_up:
+            ms = site.get("response_ms", 0)
+            ms_str = f"{ms}ms"
+            mw, _ = text_size(draw, ms_str, status_font)
+            ms_color = green if ms < 500 else parse_color("base0a") if ms < 1000 else red
+            draw.text((width - PAD - mw, y + 4), ms_str,
+                      fill=ms_color, font=status_font)
+        else:
+            down_str = "DOWN"
+            dw, _ = text_size(draw, down_str, status_font)
+            draw.text((width - PAD - dw, y + 4), down_str,
+                      fill=red, font=status_font)
+
+        # url
+        url = site.get("url", "")
+        # strip protocol for display
+        display_url = url.replace("https://", "").replace("http://", "").rstrip("/")
+        max_url_w = width - PAD - text_x - 8
+        while text_size(draw, display_url, url_font)[0] > max_url_w and len(display_url) > 2:
+            display_url = display_url[:-4] + "…"
+        draw.text((text_x, y + 36), display_url,
+                  fill=lerp_color(fg, bg, MUTED), font=url_font)
+
+        if i < min(len(sites), max_rows) - 1:
+            draw.line([text_x, y + row_h - 4, width - PAD, y + row_h - 4],
+                      fill=lerp_color(bg, fg, SEP), width=1)
+
+    _draw_timestamp(draw, width, height, bg, fg)
+
+    return img_to_webp(img)
+
+
+# --- month calendar ---
 
 def render_month_calendar(year: int, month: int, highlights: list[int],
                           width: int, height: int, bg, fg, accent) -> bytes:

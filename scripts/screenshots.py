@@ -14,10 +14,11 @@ from PIL import Image
 from display import parse_color
 from widgets import (
     parse_gauge_spec, parse_progress_spec, render_calendar, render_clock,
-    render_gauges, render_github, render_image, render_list, render_mail,
-    render_message, render_month_calendar, render_notify, render_nowplaying,
-    render_progress, render_qrcode, render_sysmon, render_table,
-    render_timer, render_weather,
+    render_departures, render_gauges, render_github, render_hackernews,
+    render_image, render_list, render_mail, render_message,
+    render_monitor, render_month_calendar, render_notify,
+    render_nowplaying, render_progress, render_qrcode, render_stocks,
+    render_sysmon, render_table, render_timer, render_weather,
 )
 
 W, H = 720, 720
@@ -146,8 +147,10 @@ save("calendar", render_calendar(events, W, H, BG, FG, accent("base0A")))
 # --- progress ---
 items = [parse_progress_spec(s) for s in [
     "Build:75:100", "Tests:42:50", "Deploy:30:100"]]
-save("progress", render_progress(
+save("progress-bar", render_progress(
     items, "bar", "CI Pipeline", W, H, BG, FG, accent("base0A")))
+save("progress-ring", render_progress(
+    items, "circle", "CI Pipeline", W, H, BG, FG, accent("base0A")))
 
 # --- table ---
 save("table", render_table(
@@ -174,5 +177,59 @@ save("list", render_list(
 # --- month calendar ---
 save("monthcal", render_month_calendar(
     2026, 3, [5, 10, 15, 22, 28], W, H, BG, FG, accent("base0A")))
+
+# --- departures ---
+save("departures", render_departures(
+    [{"time": "14:32", "destination": "Maçanet-Massanes", "line": "R1", "delay": 3},
+     {"time": "14:45", "destination": "Molins de Rei", "line": "R4", "delay": 0},
+     {"time": "15:02", "destination": "L'Hospitalet", "line": "R2S", "delay": 0},
+     {"time": "15:18", "destination": "Aeroport", "line": "R2N", "delay": 5},
+     {"time": "15:33", "destination": "Sant Celoni", "line": "R1", "delay": 0},
+     {"time": "15:50", "destination": "Terrassa", "line": "R4", "delay": 0}],
+    "Passeig de Gràcia", W, H, BG, FG, accent("base0C")))
+
+# --- stocks ---
+import math as _math
+spark_up = [100 + 5 * _math.sin(i / 3) + i * 0.3 for i in range(50)]
+spark_down = [200 - i * 0.8 + 3 * _math.sin(i / 2) for i in range(50)]
+spark_flat = [50 + 2 * _math.sin(i / 4) for i in range(50)]
+save("stocks", render_stocks(
+    [{"symbol": "AAPL", "price": 178.52, "change_pct": 1.34,
+      "sparkline": spark_up},
+     {"symbol": "MSFT", "price": 415.80, "change_pct": -0.67,
+      "sparkline": spark_down},
+     {"symbol": "BTC-USD", "price": 67432.10, "change_pct": 2.85,
+      "sparkline": spark_flat},
+     {"symbol": "ETH-USD", "price": 3521.45, "change_pct": -1.12,
+      "sparkline": spark_down}],
+    W, H, BG, FG, accent("base0A")))
+
+# --- hackernews ---
+save("hackernews", render_hackernews(
+    [{"title": "Show HN: A minimal text editor in 500 lines of C", "score": 482, "comments": 187, "age": "3h"},
+     {"title": "Why SQLite is so great for the edge", "score": 341, "comments": 142, "age": "5h"},
+     {"title": "The death of the Unix philosophy", "score": 289, "comments": 231, "age": "7h"},
+     {"title": "Rust in the Linux kernel: progress report 2026", "score": 256, "comments": 98, "age": "4h"},
+     {"title": "How we reduced our AWS bill by 90%", "score": 198, "comments": 67, "age": "2h"},
+     {"title": "A visual guide to QUIC and HTTP/3", "score": 167, "comments": 43, "age": "6h"},
+     {"title": "The surprising math behind parking lots", "score": 145, "comments": 56, "age": "8h"},
+     {"title": "Building a CPU from scratch with Nand gates", "score": 134, "comments": 89, "age": "1d"}],
+    W, H, BG, FG, accent("base09")))
+
+# --- monitor ---
+save("monitor", render_monitor(
+    [{"title": "Home Assistant", "url": "https://ha.example.com", "up": True,
+      "status": 200, "response_ms": 142},
+     {"title": "Immich", "url": "https://photos.example.com", "up": True,
+      "status": 200, "response_ms": 89},
+     {"title": "Jellyfin", "url": "https://media.example.com", "up": True,
+      "status": 200, "response_ms": 231},
+     {"title": "Gitea", "url": "https://git.example.com", "up": False,
+      "status": 0, "response_ms": 0},
+     {"title": "Grafana", "url": "https://grafana.example.com", "up": True,
+      "status": 200, "response_ms": 567},
+     {"title": "Nextcloud", "url": "https://cloud.example.com", "up": True,
+      "status": 200, "response_ms": 1230}],
+    W, H, BG, FG, accent("base0B")))
 
 print("Done.")
