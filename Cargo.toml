@@ -1,12 +1,12 @@
 [package]
-name = "esp32-p4-usb-stream"
+name = "waveshare-display"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 esp-idf-sys = { version = "0.37", features = ["binstart"] }
 anyhow = "1"
-png = "0.18"
+image-webp = "0.2"
 
 [profile.release]
 panic = "abort"

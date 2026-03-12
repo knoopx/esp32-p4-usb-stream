@@ -2,8 +2,9 @@ use std::io::Cursor;
 use std::ptr;
 
 use anyhow::{bail, Result};
+use image_webp::WebPDecoder;
 
-const MAGIC: &[u8; 4] = b"DPNG";
+const MAGIC: &[u8; 4] = b"DWBP";
 const HEADER_SIZE: usize = 12;
 const RESP_OK: u8 = 0x01;
 const RESP_ERR: u8 = 0xFF;
@@ -22,7 +23,7 @@ fn main() -> Result<()> {
     esp_idf_sys::link_patches();
 
     unsafe {
-        esp_idf_sys::esp_rom_printf(b"ESP32-P4 USB Display starting...\n\0".as_ptr() as *const _);
+        esp_idf_sys::esp_rom_printf(b"Waveshare Display starting...\n\0".as_ptr() as *const _);
     }
 
     let mut display_info = unsafe { std::mem::zeroed::<esp_idf_sys::bsp_display_info_t>() };
@@ -46,8 +47,8 @@ fn main() -> Result<()> {
     }
     unsafe { esp_idf_sys::uart_flush_input(0) };
 
-    // PNG receive buffer (up to 1MB should be plenty for 720x720 PNG)
-    let mut png_buf: Vec<u8> = vec![0u8; 1024 * 1024];
+    // WebP receive buffer (up to 1MB)
+    let mut webp_buf: Vec<u8> = vec![0u8; 1024 * 1024];
     // RGB565 framebuffer scratch
     let mut fb_scratch: Vec<u8> = vec![0u8; FB_SIZE];
 
@@ -70,7 +71,7 @@ fn main() -> Result<()> {
         let data_len = u32::from_le_bytes([hdr[4], hdr[5], hdr[6], hdr[7]]) as usize;
         let chunk_size = u16::from_le_bytes([hdr[8], hdr[9]]) as usize;
 
-        if data_len == 0 || data_len > png_buf.len() || chunk_size == 0 {
+        if data_len == 0 || data_len > webp_buf.len() || chunk_size == 0 {
             send_byte(RESP_ERR);
             continue;
         }
@@ -78,12 +79,12 @@ fn main() -> Result<()> {
         // ACK header
         send_byte(RESP_OK);
 
-        // Receive PNG data in chunks
+        // Receive WebP data in chunks
         let mut offset = 0usize;
         let mut ok = true;
         while offset < data_len {
             let n = (data_len - offset).min(chunk_size);
-            if read_exact(&mut png_buf[offset..offset + n]).is_err() {
+            if read_exact(&mut webp_buf[offset..offset + n]).is_err() {
                 ok = false;
                 break;
             }
@@ -95,36 +96,31 @@ fn main() -> Result<()> {
             continue;
         }
 
-        // Decode PNG
-        let decoder = png::Decoder::new(Cursor::new(&png_buf[..data_len]));
-        let mut reader = match decoder.read_info() {
-            Ok(r) => r,
+        // Decode WebP
+        let mut decoder = match WebPDecoder::new(Cursor::new(&webp_buf[..data_len])) {
+            Ok(d) => d,
             Err(_) => {
                 send_byte(RESP_ERR);
                 continue;
             }
         };
 
-        let info = reader.info();
-        let width = info.width as usize;
-        let height = info.height as usize;
-        let color_type = info.color_type;
+        let (width, height) = decoder.dimensions();
+        let width = width as usize;
+        let height = height as usize;
 
         if width > LCD_W || height > LCD_H {
             send_byte(RESP_ERR);
             continue;
         }
 
-        // Decode all rows
-        let mut rgb_buf: Vec<u8> = vec![0u8; width * height * 4]; // max RGBA
-        let mut row_offset = 0;
-        while let Ok(Some(row)) = reader.next_row() {
-            let row_data = row.data();
-            let end = row_offset + row_data.len();
-            if end <= rgb_buf.len() {
-                rgb_buf[row_offset..end].copy_from_slice(row_data);
-            }
-            row_offset = end;
+        let has_alpha = decoder.has_alpha();
+        let bpp_src = if has_alpha { 4 } else { 3 };
+        let mut rgb_buf: Vec<u8> = vec![0u8; width * height * bpp_src];
+
+        if decoder.read_image(&mut rgb_buf).is_err() {
+            send_byte(RESP_ERR);
+            continue;
         }
 
         // Convert to RGB565 and blit
@@ -132,42 +128,15 @@ fn main() -> Result<()> {
         let x_off = (LCD_W.saturating_sub(width)) / 2;
         let y_off = (LCD_H.saturating_sub(height)) / 2;
 
-        let bytes_per_pixel = match color_type {
-            png::ColorType::Rgb => 3,
-            png::ColorType::Rgba => 4,
-            png::ColorType::Grayscale => 1,
-            png::ColorType::GrayscaleAlpha => 2,
-            _ => 3,
-        };
-
         for y in 0..height {
             for x in 0..width {
-                let src_idx = (y * width + x) * bytes_per_pixel;
-                let (r, g, b) = match color_type {
-                    png::ColorType::Rgb => (
-                        rgb_buf[src_idx],
-                        rgb_buf[src_idx + 1],
-                        rgb_buf[src_idx + 2],
-                    ),
-                    png::ColorType::Rgba => (
-                        rgb_buf[src_idx],
-                        rgb_buf[src_idx + 1],
-                        rgb_buf[src_idx + 2],
-                    ),
-                    png::ColorType::Grayscale => {
-                        let v = rgb_buf[src_idx];
-                        (v, v, v)
-                    }
-                    png::ColorType::GrayscaleAlpha => {
-                        let v = rgb_buf[src_idx];
-                        (v, v, v)
-                    }
-                    _ => (0, 0, 0),
-                };
+                let src_idx = (y * width + x) * bpp_src;
+                let r = rgb_buf[src_idx];
+                let g = rgb_buf[src_idx + 1];
+                let b = rgb_buf[src_idx + 2];
 
-                let rgb565 = ((r as u16 & 0xF8) << 8)
-                    | ((g as u16 & 0xFC) << 3)
-                    | (b as u16 >> 3);
+                let rgb565 =
+                    ((r as u16 & 0xF8) << 8) | ((g as u16 & 0xFC) << 3) | (b as u16 >> 3);
 
                 let dst_x = x_off + x;
                 let dst_y = y_off + y;
@@ -190,11 +159,7 @@ fn read_exact(buf: &mut [u8]) -> Result<()> {
     let mut off = 0;
     while off < buf.len() {
         let n = unsafe {
-            esp_idf_sys::bsp_uart_read(
-                buf[off..].as_mut_ptr(),
-                buf.len() - off,
-                10000,
-            )
+            esp_idf_sys::bsp_uart_read(buf[off..].as_mut_ptr(), buf.len() - off, 10000)
         };
         if n < 0 {
             bail!("UART read error");
