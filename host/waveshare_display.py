@@ -16,6 +16,9 @@ Usage:
     waveshare-display timer --remaining 90 --total 120 --label Deploy
     waveshare-display gauge -g "CPU:73:%" -g "RAM:4/8:GB"
     waveshare-display qrcode "https://..." --label Title
+    waveshare-display table --json '[{"Name":"Alice","Score":"95"},{"Name":"Bob","Score":"87"}]'
+    waveshare-display list -i "Buy milk:From the store" -i "Walk dog" --title "To Do"
+    waveshare-display monthcal --highlight 15 --highlight 20
     waveshare-display -p /dev/ttyACM1 clock  # custom port
 """
 
@@ -33,9 +36,10 @@ from display import (DISPLAY_H, DISPLAY_W, connect, load_theme, parse_color,
                      send_frame)
 from widgets import (
     parse_gauge_spec, parse_progress_spec, render_calendar, render_clock,
-    render_gauges, render_github, render_image, render_mail, render_message,
-    render_notify, render_nowplaying, render_progress, render_qrcode,
-    render_sysmon, render_test_pattern, render_timer, render_weather,
+    render_gauges, render_github, render_image, render_list, render_mail,
+    render_message, render_month_calendar, render_notify, render_nowplaying,
+    render_progress, render_qrcode, render_sysmon, render_table,
+    render_test_pattern, render_timer, render_weather,
 )
 
 
@@ -310,6 +314,75 @@ def cmd_progress(args):
     result(connect(args.port), data, labels)
 
 
+def cmd_table(args):
+    fg, bg, accent = resolve_colors(args)
+
+    if args.json:
+        rows_data = json.loads(args.json)
+    elif args.stdin:
+        rows_data = json.loads(sys.stdin.read())
+    else:
+        print("Provide --json or --stdin", file=sys.stderr)
+        sys.exit(1)
+
+    headers = args.header or []
+    if isinstance(rows_data, list) and rows_data and isinstance(rows_data[0], dict):
+        if not headers:
+            headers = list(rows_data[0].keys())
+        rows = [[str(r.get(h, "")) for h in headers] for r in rows_data]
+    else:
+        rows = [row if isinstance(row, list) else [str(row)] for row in rows_data]
+
+    data = render_table(headers, rows, args.title,
+                        DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    result(connect(args.port), data, f"{len(rows)} rows")
+
+
+def cmd_list(args):
+    fg, bg, accent = resolve_colors(args)
+
+    if args.json:
+        items_data = json.loads(args.json)
+    elif args.stdin:
+        items_data = json.loads(sys.stdin.read())
+    elif args.item:
+        items_data = []
+        for spec in args.item:
+            parts = spec.split(":", 1)
+            item = {"text": parts[0]}
+            if len(parts) > 1:
+                item["secondary"] = parts[1]
+            items_data.append(item)
+    else:
+        print("Provide --json, --stdin, or -i items", file=sys.stderr)
+        sys.exit(1)
+
+    # normalize: accept plain strings or dicts
+    items = []
+    for it in items_data:
+        if isinstance(it, str):
+            items.append({"text": it})
+        elif isinstance(it, dict):
+            items.append(it)
+
+    data = render_list(items, args.title,
+                       DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    result(connect(args.port), data, f"{len(items)} items")
+
+
+def cmd_monthcal(args):
+    from datetime import datetime as dt
+    fg, bg, accent = resolve_colors(args)
+    now = dt.now()
+    year = args.year or now.year
+    month = args.month or now.month
+    highlights = [int(d) for d in args.highlight] if args.highlight else []
+    data = render_month_calendar(year, month, highlights,
+                                 DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    import calendar as _cal
+    result(connect(args.port), data, f"{_cal.month_name[month]} {year}")
+
+
 # --- CLI ---
 
 def main():
@@ -410,6 +483,30 @@ def main():
     p.add_argument("--title", default="", help="Optional header title")
     common_args(p)
 
+    # table
+    p = sub.add_parser("table", help="Tabular data display")
+    p.add_argument("--json", help="JSON array of rows (list of lists or list of dicts)")
+    p.add_argument("--stdin", action="store_true", help="Read JSON from stdin")
+    p.add_argument("--header", action="append", help="Column header (repeat for each)")
+    p.add_argument("--title", default="", help="Optional header title")
+    common_args(p)
+
+    # list
+    p = sub.add_parser("list", help="List with icons and secondary text")
+    p.add_argument("--json", help="JSON array of items")
+    p.add_argument("--stdin", action="store_true", help="Read JSON from stdin")
+    p.add_argument("-i", "--item", action="append",
+                   help="'text' or 'text:secondary' (repeat for each)")
+    p.add_argument("--title", default="", help="Optional header title")
+    common_args(p)
+
+    # monthcal
+    p = sub.add_parser("monthcal", help="Month calendar grid")
+    p.add_argument("--year", type=int, default=0, help="Year (default: current)")
+    p.add_argument("--month", type=int, default=0, help="Month 1-12 (default: current)")
+    p.add_argument("--highlight", action="append", help="Day number to highlight (repeat)")
+    common_args(p)
+
     args = parser.parse_args()
 
     if args.theme:
@@ -420,7 +517,8 @@ def main():
         "clock": cmd_clock, "weather": cmd_weather, "sysmon": cmd_sysmon,
         "nowplaying": cmd_nowplaying, "mail": cmd_mail, "calendar": cmd_calendar,
         "github": cmd_github, "timer": cmd_timer, "gauge": cmd_gauge,
-        "qrcode": cmd_qrcode, "progress": cmd_progress,
+        "qrcode": cmd_qrcode, "progress": cmd_progress, "table": cmd_table,
+        "list": cmd_list, "monthcal": cmd_monthcal,
     }
     commands[args.command](args)
 

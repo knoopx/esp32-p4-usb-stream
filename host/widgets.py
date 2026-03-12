@@ -785,11 +785,13 @@ def render_qrcode(data: str, label: str, width: int, height: int,
     qr.make(fit=True)
     qr_img = qr.make_image(fill_color="black", back_color="white").convert("RGB")
 
-    qr_area = min(width - PAD * 2, height - 180)
+    qr_pad = 16
+    text_h = 40  # room for URL text below
+    qr_area = min(width - PAD * 2 - qr_pad * 2,
+                  height - content_y - PAD - qr_pad * 2 - text_h)
     qr_img = qr_img.resize((qr_area, qr_area), Image.NEAREST)
     qr_x = (width - qr_area) // 2
-    qr_y = 90
-    qr_pad = 16
+    qr_y = content_y + (height - content_y - PAD - text_h - qr_area) // 2
 
     draw.rounded_rectangle(
         [qr_x - qr_pad, qr_y - qr_pad,
@@ -1188,3 +1190,234 @@ def _draw_progress_circles(draw, items, start_y, width, height, bg, fg):
         lw, _ = text_size(draw, item["label"], label_font)
         draw.text((cx - lw // 2, cy + vh // 2 - lf // 2 + 4),
                   item["label"], fill=lerp_color(fg, bg, DIM), font=label_font)
+
+
+# --- table ---
+
+def render_table(headers: list[str], rows: list[list[str]], title: str,
+                 width: int, height: int, bg, fg, accent) -> bytes:
+    img, draw = _new_canvas(width, height, bg)
+
+    header_font = find_font(26, bold=True)
+    cell_font = find_font(24)
+
+    if title:
+        content_y = _draw_header(draw, width, "\uf0ce", title, bg, fg, accent)
+    else:
+        _draw_accent_bar(draw, width, accent)
+        content_y = ACCENT_BAR_H + PAD
+
+    n_cols = len(headers) if headers else (len(rows[0]) if rows else 0)
+    if n_cols == 0:
+        _draw_empty_state(draw, width, height, "\uf0ce", "No data", bg, fg)
+        return img_to_webp(img)
+
+    usable_w = width - PAD * 2
+    col_w = usable_w // n_cols
+    row_h = 44
+
+    # column headers
+    if headers:
+        for j, h in enumerate(headers):
+            x = PAD + j * col_w + 8
+            txt = h
+            while text_size(draw, txt, header_font)[0] > col_w - 16 and len(txt) > 2:
+                txt = txt[:-4] + "…"
+            draw.text((x, content_y), txt, fill=accent, font=header_font)
+        content_y += row_h
+        _draw_sep(draw, content_y - 8, width, bg, fg)
+
+    # rows
+    max_rows = (height - content_y - PAD) // row_h
+    for i, row in enumerate(rows[:max_rows]):
+        y = content_y + i * row_h
+        row_bg = lerp_color(bg, fg, CARD_BG) if i % 2 == 0 else bg
+        draw.rectangle([PAD, y, width - PAD, y + row_h - 4], fill=row_bg)
+
+        for j, cell in enumerate(row[:n_cols]):
+            x = PAD + j * col_w + 8
+            txt = str(cell)
+            while text_size(draw, txt, cell_font)[0] > col_w - 16 and len(txt) > 2:
+                txt = txt[:-4] + "…"
+            draw.text((x, y + 8), txt, fill=fg, font=cell_font)
+
+    # row count
+    shown = min(len(rows), max_rows)
+    if len(rows) > shown:
+        count_font = find_font(20)
+        count_str = f"{shown}/{len(rows)} rows"
+        cw, _ = text_size(draw, count_str, count_font)
+        draw.text((width - PAD - cw, height - PAD + 4), count_str,
+                  fill=lerp_color(fg, bg, DIM), font=count_font)
+
+    _draw_timestamp(draw, width, height, bg, fg)
+
+    return img_to_webp(img)
+
+
+# --- list ---
+
+def render_list(items: list[dict], title: str,
+                width: int, height: int, bg, fg, accent) -> bytes:
+    """Render a list widget.
+
+    Each item: {"text": str, "secondary": str?, "icon": str?, "value": str?}
+    """
+    img, draw = _new_canvas(width, height, bg)
+
+    text_font = find_font(30, bold=True)
+    secondary_font = find_font(24)
+    value_font = find_font(26, bold=True)
+    icon_font = find_nerd_font(28)
+
+    if title:
+        content_y = _draw_header(draw, width, "\uf03a", title, bg, fg, accent)
+    else:
+        _draw_accent_bar(draw, width, accent)
+        content_y = ACCENT_BAR_H + PAD
+
+    if not items:
+        _draw_empty_state(draw, width, height, "\uf03a", "No items", bg, fg)
+        return img_to_webp(img)
+
+    has_secondary = any(item.get("secondary") for item in items)
+    row_h = 70 if has_secondary else 50
+    max_items = (height - content_y - PAD) // row_h
+    max_text_w = width - PAD * 2 - 60  # room for icon + value
+
+    for i, item in enumerate(items[:max_items]):
+        y = content_y + i * row_h
+        color = _palette()[i % len(_palette())]
+
+        # bullet / icon
+        ix = PAD
+        icon = item.get("icon")
+        if icon and icon_font:
+            draw.text((ix, y + 4), icon, fill=color, font=icon_font)
+            text_x = ix + 40
+        else:
+            draw.rounded_rectangle([ix + 4, y + 10, ix + 12, y + 24],
+                                   radius=3, fill=color)
+            text_x = ix + 24
+
+        # right-side value
+        value = item.get("value", "")
+        value_x_end = width - PAD
+        if value:
+            vw, _ = text_size(draw, str(value), value_font)
+            draw.text((value_x_end - vw, y + 4), str(value),
+                      fill=lerp_color(fg, bg, MUTED), font=value_font)
+            max_line_w = value_x_end - vw - text_x - 16
+        else:
+            max_line_w = value_x_end - text_x - 8
+
+        # primary text
+        txt = item["text"]
+        while text_size(draw, txt, text_font)[0] > max_line_w and len(txt) > 2:
+            txt = txt[:-4] + "…"
+        draw.text((text_x, y), txt, fill=fg, font=text_font)
+
+        # secondary text
+        secondary = item.get("secondary", "")
+        if secondary:
+            sec = secondary
+            while text_size(draw, sec, secondary_font)[0] > max_line_w and len(sec) > 2:
+                sec = sec[:-4] + "…"
+            draw.text((text_x, y + 34), sec,
+                      fill=lerp_color(fg, bg, MUTED), font=secondary_font)
+
+        # separator
+        if i < min(len(items), max_items) - 1:
+            sep_y = y + row_h - 4
+            draw.line([text_x, sep_y, width - PAD, sep_y],
+                      fill=lerp_color(bg, fg, SEP), width=1)
+
+    shown = min(len(items), max_items)
+    if len(items) > shown:
+        count_font = find_font(20)
+        count_str = f"{shown}/{len(items)} items"
+        cw, _ = text_size(draw, count_str, count_font)
+        draw.text((width - PAD - cw, height - PAD + 4), count_str,
+                  fill=lerp_color(fg, bg, DIM), font=count_font)
+
+    _draw_timestamp(draw, width, height, bg, fg)
+
+    return img_to_webp(img)
+
+
+# --- month calendar ---
+
+import calendar as _cal
+
+
+def render_month_calendar(year: int, month: int, highlights: list[int],
+                          width: int, height: int, bg, fg, accent) -> bytes:
+    """Render a month-grid calendar. highlights = list of day numbers to mark."""
+    img, draw = _new_canvas(width, height, bg)
+
+    now = datetime.now()
+    today = now.day if (year == now.year and month == now.month) else -1
+
+    month_name = _cal.month_name[month]
+    title = f"{month_name} {year}"
+    content_y = _draw_header(draw, width, "\uf073", title, bg, fg, accent)
+
+    day_font = find_font(26, bold=True)
+    num_font = find_font(28)
+    num_bold = find_font(28, bold=True)
+
+    usable_w = width - PAD * 2
+    usable_h = height - content_y - PAD
+    col_w = usable_w // 7
+    row_h = min(usable_h // 7, 80)  # 1 header row + up to 6 week rows
+
+    # day-of-week header (Mon..Sun)
+    day_names = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+    for j, dn in enumerate(day_names):
+        dw, _ = text_size(draw, dn, day_font)
+        cx = PAD + j * col_w + col_w // 2
+        color = accent if j >= 5 else lerp_color(fg, bg, DIM)
+        draw.text((cx - dw // 2, content_y), dn, fill=color, font=day_font)
+
+    grid_y = content_y + row_h
+    _draw_sep(draw, grid_y - 6, width, bg, fg)
+
+    # calendar grid
+    cal = _cal.monthcalendar(year, month)
+    cell_r = min(col_w, row_h) // 2 - 4
+
+    for r, week in enumerate(cal):
+        for c, day in enumerate(week):
+            if day == 0:
+                continue
+            cx = PAD + c * col_w + col_w // 2
+            cy = grid_y + r * row_h + row_h // 2
+
+            is_today = day == today
+            is_highlight = day in highlights
+            is_weekend = c >= 5
+
+            if is_today:
+                draw.ellipse([cx - cell_r, cy - cell_r, cx + cell_r, cy + cell_r],
+                             fill=accent)
+                font = num_bold
+                color = bg
+            elif is_highlight:
+                draw.ellipse([cx - cell_r, cy - cell_r, cx + cell_r, cy + cell_r],
+                             outline=accent, width=2)
+                font = num_bold
+                color = fg
+            else:
+                font = num_font
+                color = lerp_color(fg, bg, MUTED) if is_weekend else fg
+
+            day_str = str(day)
+            bbox = draw.textbbox((0, 0), day_str, font=font)
+            tw = bbox[2] - bbox[0]
+            th = bbox[3] - bbox[1]
+            draw.text((cx - tw // 2 - bbox[0], cy - th // 2 - bbox[1]),
+                      day_str, fill=color, font=font)
+
+    _draw_timestamp(draw, width, height, bg, fg)
+
+    return img_to_webp(img)
