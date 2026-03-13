@@ -50,13 +50,15 @@ def _draw_header(draw, width, icon, title, bg, fg, accent,
         title_font = find_font(32, bold=True)
 
     ty = HEADER_Y
+    _, th = text_size(draw, title, title_font)
     if icon_font:
-        draw.text((PAD, ty), icon, fill=accent, font=icon_font)
+        _, ih = text_size(draw, icon, icon_font)
+        draw.text((PAD, ty + (th - ih) // 2), icon, fill=accent, font=icon_font)
     draw.text((PAD + 48, ty), title, fill=fg, font=title_font)
 
     if right_text and right_font:
-        rw, _ = text_size(draw, right_text, right_font)
-        draw.text((width - PAD - rw, ty + 10), right_text,
+        rw, rh = text_size(draw, right_text, right_font)
+        draw.text((width - PAD - rw, ty + (th - rh) // 2), right_text,
                   fill=lerp_color(fg, bg, DIM), font=right_font)
 
     sep_y = HEADER_SEP_Y
@@ -244,15 +246,23 @@ def render_clock(now: datetime, width: int, height: int,
     date_str = now.strftime("%A, %B %-d")
     dbbox = draw.textbbox((0, 0), date_str, font=date_font)
     dw = dbbox[2] - dbbox[0]
+    dh = dbbox[3] - dbbox[1]
     date_y = ty + th + 50
-    draw.text(((width - dw) // 2, date_y), date_str,
-              fill=lerp_color(fg, bg, MUTED), font=date_font)
+    icon_gap = 12
 
     if icon_font:
         ibbox = draw.textbbox((0, 0), "\uf073", font=icon_font)
         iiw = ibbox[2] - ibbox[0]
-        draw.text(((width - dw) // 2 - iiw - 12, date_y),
+        iih = ibbox[3] - ibbox[1]
+        total_w = iiw + icon_gap + dw
+        x0 = (width - total_w) // 2
+        draw.text((x0, date_y + (dh - iih) // 2),
                   "\uf073", fill=accent, font=icon_font)
+        draw.text((x0 + iiw + icon_gap, date_y), date_str,
+                  fill=lerp_color(fg, bg, MUTED), font=date_font)
+    else:
+        draw.text(((width - dw) // 2, date_y), date_str,
+                  fill=lerp_color(fg, bg, MUTED), font=date_font)
 
     return img_to_webp(img)
 
@@ -476,8 +486,10 @@ def render_sysmon(width: int, height: int, bg, fg, accent) -> bytes:
 
     for i, (icon, text) in enumerate(items[:6]):
         y = dy + i * row_h
+        _, th = text_size(draw, text, detail_font)
         if detail_icon_font:
-            draw.text((PAD, y + 4), icon, fill=accent, font=detail_icon_font)
+            _, ih = text_size(draw, icon, detail_icon_font)
+            draw.text((PAD, y + (th - ih) // 2), icon, fill=accent, font=detail_icon_font)
         draw.text((PAD + 36, y), text, fill=detail_fg, font=detail_font)
 
     _draw_timestamp(draw, width, height, bg, fg, fmt="%H:%M:%S")
