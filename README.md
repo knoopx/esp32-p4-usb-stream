@@ -14,71 +14,24 @@ Rust firmware for the **Waveshare ESP32-P4-WIFI6-Touch-LCD-4B** that turns it in
 
 ## Screenshots
 
-### Clock
-![Clock](screenshots/clock.png)
-
-### Weather
-![Weather](screenshots/weather.png)
-
-### System Monitor
-![System Monitor](screenshots/sysmon.png)
-
-### Now Playing
-![Now Playing](screenshots/nowplaying.png)
-
-### Email (gog)
-![Email](screenshots/mail.png)
-
-### Calendar (gog)
-![Calendar](screenshots/calendar.png)
-
-### GitHub Stats
-![GitHub Stats](screenshots/github.png)
-
-### Timer
-![Timer](screenshots/timer.png)
-
-### Gauge
-![Gauge](screenshots/gauge.png)
-
-### Notification
-![Notification](screenshots/notify.png)
-
-### QR Code
-![QR Code](screenshots/qrcode.png)
-
-### Message
-![Message](screenshots/message.png)
-
-### Progress Bar
-![Progress Bar](screenshots/progress-bar.png)
-
-### Progress Ring
-![Progress Ring](screenshots/progress-ring.png)
-
-### Table
-![Table](screenshots/table.png)
-
-### List
-![List](screenshots/list.png)
-
-### Month Calendar
-![Month Calendar](screenshots/monthcal.png)
-
-### Departures
-![Departures](screenshots/departures.png)
-
-### Stocks
-![Stocks](screenshots/stocks.png)
-
-### Hacker News
-![Hacker News](screenshots/hackernews.png)
-
-### Monitor
-![Monitor](screenshots/monitor.png)
-
-### Image
-![Image](screenshots/image.png)
+| | | |
+|:---:|:---:|:---:|
+| ![Clock](screenshots/clock.png) | ![Weather](screenshots/weather.png) | ![System Monitor](screenshots/sysmon.png) |
+| Clock | Weather | System Monitor |
+| ![Now Playing](screenshots/nowplaying.png) | ![Mail](screenshots/mail.png) | ![Calendar](screenshots/calendar.png) |
+| Now Playing | Mail | Calendar |
+| ![Tasks](screenshots/tasks.png) | ![GitHub](screenshots/github.png) | ![Stocks](screenshots/stocks.png) |
+| Tasks | GitHub | Stocks |
+| ![Hacker News](screenshots/hackernews.png) | ![Departures](screenshots/departures.png) | ![Monitor](screenshots/monitor.png) |
+| Hacker News | Departures | Monitor |
+| ![Timer](screenshots/timer.png) | ![Gauge](screenshots/gauge.png) | ![Progress Bar](screenshots/progress-bar.png) |
+| Timer | Gauge | Progress Bar |
+| ![Progress Ring](screenshots/progress-ring.png) | ![QR Code](screenshots/qrcode.png) | ![Month Calendar](screenshots/monthcal.png) |
+| Progress Ring | QR Code | Month Calendar |
+| ![Notification](screenshots/notify.png) | ![Message](screenshots/message.png) | ![Table](screenshots/table.png) |
+| Notification | Message | Table |
+| ![List](screenshots/list.png) | ![Image](screenshots/image.png) | |
+| List | Image | |
 
 ## Host CLI
 
