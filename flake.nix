@@ -108,7 +108,7 @@
             ./patch-tinyusb.sh target
             cargo build --release
 
-            ELF="target/riscv32imafc-esp-espidf/release/waveshare-display"
+            ELF="target/riscv32imafc-esp-espidf/release/waveshare-firmware"
             BIN="$ELF.bin"
             BUILD_DIR=$(find target/riscv32imafc-esp-espidf/release/build/esp-idf-sys-*/out/build -maxdepth 0 2>/dev/null | head -1)
 

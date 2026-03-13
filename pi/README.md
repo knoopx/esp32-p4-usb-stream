@@ -34,4 +34,4 @@ Everything is preconfigured:
 |------|---------|
 | `AGENTS.md` | Autonomous loop: check sources → write openui-lang → render → sleep |
 | `.pi/settings.json` | Model default, heartbeat package, compaction |
-| `.pi/skills/waveshare-display/SKILL.md` | openui-lang syntax, component reference, CLI usage |
+| `.pi/skills/waveshare-genui/SKILL.md` | openui-lang syntax, component reference, CLI usage |

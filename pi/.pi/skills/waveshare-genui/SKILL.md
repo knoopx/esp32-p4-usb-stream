@@ -1,5 +1,5 @@
 ---
-name: waveshare-display
+name: waveshare-genui
 description: Renders UI to a Waveshare 720×720 display using waveshare-genui CLI and openui-lang DSL. Use when asked to show content on the display.
 ---
 

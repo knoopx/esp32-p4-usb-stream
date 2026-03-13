@@ -72,23 +72,23 @@ For LLM-driven UIs, the CLI generates a **system prompt** from the component lib
 
 ```bash
 # Pipe openui-lang to the display
-bun run examples/clock.tsx | waveshare-display -
+bun run examples/clock.tsx | waveshare-genui -
 
 # Render to PNG instead
-bun run examples/stocks.tsx AAPL MSFT | waveshare-display - -o stocks.png
+bun run examples/stocks.tsx AAPL MSFT | waveshare-genui - -o stocks.png
 
 # Read a .oui file
-waveshare-display dashboard.oui
+waveshare-genui dashboard.oui
 
 # Print the LLM system prompt
-waveshare-display prompt
+waveshare-genui prompt
 
 # Print the JSON schema
-waveshare-display schema
+waveshare-genui schema
 
 # Display power
-waveshare-display on
-waveshare-display off
+waveshare-genui on
+waveshare-genui off
 ```
 
 ### JSX Emitter
@@ -152,13 +152,13 @@ Production-ready scripts that fetch live data and output openui-lang to stdout:
 
 ```bash
 # Live stock ticker on display
-bun run examples/stocks.tsx AAPL MSFT BTC-USD | waveshare-display -
+bun run examples/stocks.tsx AAPL MSFT BTC-USD | waveshare-genui -
 
 # Train departures
-bun run examples/departures.tsx --station-id 78805 --station "Passeig de Gràcia" | waveshare-display -
+bun run examples/departures.tsx --station-id 78805 --station "Passeig de Gràcia" | waveshare-genui -
 
 # Site monitoring
-bun run examples/monitor.tsx -s "GitHub=https://github.com" -s "Google=https://google.com" | waveshare-display -
+bun run examples/monitor.tsx -s "GitHub=https://github.com" -s "Google=https://google.com" | waveshare-genui -
 ```
 
 ## Architecture
