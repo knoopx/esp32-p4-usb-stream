@@ -6,7 +6,7 @@ Usage:
     waveshare-display image photo.jpg
     waveshare-display message "Hello World" --size 80
     waveshare-display clock --24h
-    waveshare-display notify "Title" "Body" --icon $'\\uf058' --accent green
+    waveshare-display notify "Title" "Body" --icon $'\\uf058'
     waveshare-display weather --location Barcelona
     waveshare-display sysmon
     waveshare-display nowplaying
@@ -39,8 +39,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from display import (DISPLAY_H, DISPLAY_W, connect, load_theme, parse_color,
-                     send_frame)
+from display import (DISPLAY_H, DISPLAY_W, connect, load_theme, send_frame)
 from widgets import (
     parse_gauge_spec, parse_progress_spec, render_calendar, render_clock,
     render_departures, render_gauges, render_github, render_hackernews,
@@ -50,16 +49,6 @@ from widgets import (
     render_sysmon, render_table, render_tasks, render_test_pattern,
     render_timer, render_weather,
 )
-
-
-def common_args(parser):
-    parser.add_argument("--fg", default="base05", help="Foreground color")
-    parser.add_argument("--bg", default="base00", help="Background color")
-    parser.add_argument("--accent", default="base0A", help="Accent color")
-
-
-def resolve_colors(args):
-    return parse_color(args.fg), parse_color(args.bg), parse_color(args.accent)
 
 
 def result(ser, data, info=""):
@@ -124,24 +113,20 @@ def cmd_message(args):
         print("Provide text or --stdin", file=sys.stderr)
         sys.exit(1)
 
-    fg, bg, _ = resolve_colors(args)
-    data = render_message(text, args.width, args.height, fg, bg,
+    data = render_message(text, args.width, args.height,
                           args.size, args.align, args.padding)
     result(connect(args.port), data)
 
 
 def cmd_notify(args):
-    fg, bg, accent = resolve_colors(args)
     body = args.body.replace("\\n", "\n") if args.body else ""
     data = render_notify(args.title, body, args.icon,
-                         DISPLAY_W, DISPLAY_H, bg, accent, fg)
+                         DISPLAY_W, DISPLAY_H)
     result(connect(args.port), data)
 
 
 def cmd_clock(args):
-    fg, bg, accent = resolve_colors(args)
-    data = render_clock(datetime.now(), DISPLAY_W, DISPLAY_H,
-                        bg, fg, accent, args.use_24h)
+    data = render_clock(datetime.now(), DISPLAY_W, DISPLAY_H, args.use_24h)
     result(connect(args.port), data)
 
 
@@ -153,17 +138,14 @@ def cmd_weather(args):
     with urllib.request.urlopen(req, timeout=10) as resp:
         weather_data = json.loads(resp.read())
 
-    fg, bg, accent = resolve_colors(args)
-    data = render_weather(weather_data, DISPLAY_W, DISPLAY_H,
-                          bg, fg, accent, args.units)
+    data = render_weather(weather_data, DISPLAY_W, DISPLAY_H, args.units)
     loc_name = (weather_data.get("nearest_area", [{}])[0]
                 .get("areaName", [{}])[0].get("value", "?"))
     result(connect(args.port), data, loc_name)
 
 
 def cmd_sysmon(args):
-    fg, bg, accent = resolve_colors(args)
-    data = render_sysmon(DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    data = render_sysmon(DISPLAY_W, DISPLAY_H)
     result(connect(args.port), data)
 
 
@@ -176,7 +158,6 @@ def cmd_nowplaying(args):
         except (subprocess.SubprocessError, FileNotFoundError):
             return ""
 
-    fg, bg, accent = resolve_colors(args)
     title = playerctl("metadata", "title")
     artist = playerctl("metadata", "artist")
     album = playerctl("metadata", "album")
@@ -184,7 +165,7 @@ def cmd_nowplaying(args):
     art_url = playerctl("metadata", "mpris:artUrl")
 
     data = render_nowplaying(title, artist, album, status, art_url,
-                             DISPLAY_W, DISPLAY_H, bg, fg, accent)
+                             DISPLAY_W, DISPLAY_H)
     info = f"{artist} — {title}" if artist else title or "Nothing playing"
     result(connect(args.port), data, info)
 
@@ -203,8 +184,7 @@ def cmd_mail(args):
     emails = [{"from": t.get("from", ""), "subject": t.get("subject", ""),
                "date": t.get("date", "")} for t in threads[:8]]
 
-    fg, bg, accent = resolve_colors(args)
-    data = render_mail(emails, args.query, DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    data = render_mail(emails, args.query, DISPLAY_W, DISPLAY_H)
     result(connect(args.port), data, f"{len(emails)} emails")
 
 
@@ -263,8 +243,7 @@ def cmd_calendar(args):
             "attendees": len(e.get("attendees", [])),
         })
 
-    fg, bg, accent = resolve_colors(args)
-    data = render_calendar(events, DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    data = render_calendar(events, DISPLAY_W, DISPLAY_H)
     result(connect(args.port), data, f"{len(events)} events")
 
 
@@ -313,8 +292,7 @@ def cmd_tasks(args):
                 "status": t.get("status", "needsAction"),
             })
 
-    fg, bg, accent = resolve_colors(args)
-    data = render_tasks(tasks, args.title, DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    data = render_tasks(tasks, args.title, DISPLAY_W, DISPLAY_H)
     result(connect(args.port), data, f"{len(tasks)} tasks")
 
 
@@ -338,24 +316,21 @@ def cmd_github(args):
         print("No repos fetched", file=sys.stderr)
         sys.exit(1)
 
-    fg, bg, accent = resolve_colors(args)
-    data = render_github(repos, DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    data = render_github(repos, DISPLAY_W, DISPLAY_H)
     names = ", ".join(r["full_name"] for r in repos)
     result(connect(args.port), data, names)
 
 
 def cmd_timer(args):
-    fg, bg, accent = resolve_colors(args)
     data = render_timer(args.remaining, args.total, args.label,
-                        DISPLAY_W, DISPLAY_H, bg, fg, accent)
+                        DISPLAY_W, DISPLAY_H)
     m, s = divmod(args.remaining, 60)
     result(connect(args.port), data, f"{m:02d}:{s:02d}")
 
 
 def cmd_gauge(args):
-    fg, bg, accent = resolve_colors(args)
     gauges = [parse_gauge_spec(s) for s in args.gauge[:4]]
-    data = render_gauges(gauges, DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    data = render_gauges(gauges, DISPLAY_W, DISPLAY_H)
     labels = ", ".join(g["label"] for g in gauges)
     result(connect(args.port), data, labels)
 
@@ -369,22 +344,19 @@ def cmd_qrcode(args):
         print("Provide data or --stdin", file=sys.stderr)
         sys.exit(1)
 
-    fg, bg, accent = resolve_colors(args)
-    data = render_qrcode(data_str, args.label, DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    data = render_qrcode(data_str, args.label, DISPLAY_W, DISPLAY_H)
     result(connect(args.port), data)
 
 
 def cmd_progress(args):
-    fg, bg, accent = resolve_colors(args)
     items = [parse_progress_spec(s) for s in args.item[:9]]
     data = render_progress(items, args.style, args.title,
-                           DISPLAY_W, DISPLAY_H, bg, fg, accent)
+                           DISPLAY_W, DISPLAY_H)
     labels = ", ".join(i["label"] for i in items)
     result(connect(args.port), data, labels)
 
 
 def cmd_table(args):
-    fg, bg, accent = resolve_colors(args)
 
     if args.json:
         rows_data = json.loads(args.json)
@@ -403,12 +375,11 @@ def cmd_table(args):
         rows = [row if isinstance(row, list) else [str(row)] for row in rows_data]
 
     data = render_table(headers, rows, args.title,
-                        DISPLAY_W, DISPLAY_H, bg, fg, accent)
+                        DISPLAY_W, DISPLAY_H)
     result(connect(args.port), data, f"{len(rows)} rows")
 
 
 def cmd_list(args):
-    fg, bg, accent = resolve_colors(args)
 
     if args.json:
         items_data = json.loads(args.json)
@@ -435,7 +406,7 @@ def cmd_list(args):
             items.append(it)
 
     data = render_list(items, args.title,
-                       DISPLAY_W, DISPLAY_H, bg, fg, accent)
+                       DISPLAY_W, DISPLAY_H)
     result(connect(args.port), data, f"{len(items)} items")
 
 
@@ -471,7 +442,7 @@ def cmd_departures(args):
                 departures.append({
                     "time": dep_time,
                     "destination": dest,
-                    "line": train.get("line", ""),
+                    "line": train.get("line", {}).get("name", "") if isinstance(train.get("line"), dict) else train.get("line", ""),
                     "delay": train.get("delay", 0),
                 })
         except Exception as e:
@@ -481,9 +452,7 @@ def cmd_departures(args):
         print("No departures (provide --json, --stdin, or --station-id)",
               file=sys.stderr)
 
-    fg, bg, accent = resolve_colors(args)
-    data = render_departures(departures, station, DISPLAY_W, DISPLAY_H,
-                             bg, fg, accent)
+    data = render_departures(departures, station, DISPLAY_W, DISPLAY_H)
     result(connect(args.port), data, f"{len(departures)} departures")
 
 
@@ -528,8 +497,7 @@ def cmd_stocks(args):
         print("No ticker data", file=sys.stderr)
         sys.exit(1)
 
-    fg, bg, accent = resolve_colors(args)
-    data = render_stocks(tickers, DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    data = render_stocks(tickers, DISPLAY_W, DISPLAY_H)
     names = ", ".join(t["symbol"] for t in tickers)
     result(connect(args.port), data, names)
 
@@ -578,8 +546,7 @@ def cmd_hackernews(args):
             "age": age,
         })
 
-    fg, bg, accent = resolve_colors(args)
-    data = render_hackernews(stories, DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    data = render_hackernews(stories, DISPLAY_W, DISPLAY_H)
     result(connect(args.port), data, f"{len(stories)} stories")
 
 
@@ -616,21 +583,19 @@ def cmd_monitor(args):
                 "response_ms": 0,
             })
 
-    fg, bg, accent = resolve_colors(args)
-    data = render_monitor(sites, DISPLAY_W, DISPLAY_H, bg, fg, accent)
+    data = render_monitor(sites, DISPLAY_W, DISPLAY_H)
     up = sum(1 for s in sites if s["up"])
     result(connect(args.port), data, f"{up}/{len(sites)} up")
 
 
 def cmd_monthcal(args):
     from datetime import datetime as dt
-    fg, bg, accent = resolve_colors(args)
     now = dt.now()
     year = args.year or now.year
     month = args.month or now.month
     highlights = [int(d) for d in args.highlight] if args.highlight else []
     data = render_month_calendar(year, month, highlights,
-                                 DISPLAY_W, DISPLAY_H, bg, fg, accent)
+                                 DISPLAY_W, DISPLAY_H)
     import calendar as _cal
     result(connect(args.port), data, f"{_cal.month_name[month]} {year}")
 
@@ -664,38 +629,31 @@ def main():
     p.add_argument("--padding", type=int, default=40)
     p.add_argument("--width", type=int, default=DISPLAY_W)
     p.add_argument("--height", type=int, default=DISPLAY_H)
-    common_args(p)
 
     # notify
     p = sub.add_parser("notify", help="Notification with icon")
     p.add_argument("title", help="Title")
     p.add_argument("body", nargs="?", default="", help="Body text")
     p.add_argument("--icon", default="\uf0e0", help="Nerd Font icon")
-    common_args(p)
 
     # clock
     p = sub.add_parser("clock", help="Current time and date")
     p.add_argument("--24h", dest="use_24h", action="store_true")
-    common_args(p)
 
     # weather
     p = sub.add_parser("weather", help="Weather via wttr.in")
     p.add_argument("--location", default="", help="Location (default: auto)")
     p.add_argument("--units", choices=["c", "f"], default="c")
-    common_args(p)
 
     # sysmon
     p = sub.add_parser("sysmon", help="System monitor")
-    common_args(p)
 
     # nowplaying
     p = sub.add_parser("nowplaying", help="MPRIS media info")
-    common_args(p)
 
     # mail
     p = sub.add_parser("mail", help="Unread emails via gog CLI")
     p.add_argument("--query", default="is:unread")
-    common_args(p)
 
     # calendar
     p = sub.add_parser("calendar", help="Calendar events via gog CLI")
@@ -703,7 +661,6 @@ def main():
     p.add_argument("--week", action="store_true", help="This week")
     p.add_argument("--days", type=int, default=0, help="Next N days")
     p.add_argument("--max", type=int, default=8, help="Max events (default: 8)")
-    common_args(p)
 
     # tasks
     p = sub.add_parser("tasks", help="Google Tasks via gog CLI")
@@ -714,32 +671,27 @@ def main():
                    help="Include completed tasks")
     p.add_argument("--json", help="JSON array of tasks")
     p.add_argument("--stdin", action="store_true", help="Read JSON from stdin")
-    common_args(p)
 
     # github
     p = sub.add_parser("github", help="GitHub repo stats")
     p.add_argument("repos", nargs="+", help="owner/repo (up to 4)")
-    common_args(p)
 
     # timer
     p = sub.add_parser("timer", help="Countdown timer")
     p.add_argument("--remaining", type=int, required=True, help="Seconds remaining")
     p.add_argument("--total", type=int, required=True, help="Total seconds")
     p.add_argument("--label", default="")
-    common_args(p)
 
     # gauge
     p = sub.add_parser("gauge", help="Arc gauges (1-4)")
     p.add_argument("--gauge", "-g", action="append", required=True,
                    help="'label:value:unit[:color]'")
-    common_args(p)
 
     # qrcode
     p = sub.add_parser("qrcode", help="QR code display")
     p.add_argument("data", nargs="?", help="Data to encode")
     p.add_argument("--stdin", action="store_true")
     p.add_argument("--label", default="")
-    common_args(p)
 
     # progress
     p = sub.add_parser("progress", help="Progress bars or circles")
@@ -748,7 +700,6 @@ def main():
     p.add_argument("--style", choices=["bar", "circle"], default="bar",
                    help="bar (horizontal) or circle (ring)")
     p.add_argument("--title", default="", help="Optional header title")
-    common_args(p)
 
     # table
     p = sub.add_parser("table", help="Tabular data display")
@@ -756,7 +707,6 @@ def main():
     p.add_argument("--stdin", action="store_true", help="Read JSON from stdin")
     p.add_argument("--header", action="append", help="Column header (repeat for each)")
     p.add_argument("--title", default="", help="Optional header title")
-    common_args(p)
 
     # list
     p = sub.add_parser("list", help="List with icons and secondary text")
@@ -765,7 +715,6 @@ def main():
     p.add_argument("-i", "--item", action="append",
                    help="'text' or 'text:secondary' (repeat for each)")
     p.add_argument("--title", default="", help="Optional header title")
-    common_args(p)
 
     # departures
     p = sub.add_parser("departures", help="Train departure board")
@@ -776,20 +725,17 @@ def main():
                    help="Lookahead window in minutes (default: 120)")
     p.add_argument("--json", help="JSON array of departures")
     p.add_argument("--stdin", action="store_true", help="Read JSON from stdin")
-    common_args(p)
 
     # stocks
     p = sub.add_parser("stocks", help="Stock/crypto ticker")
     p.add_argument("symbols", nargs="*", help="Ticker symbols (e.g. AAPL BTC-USD)")
     p.add_argument("--json", help="JSON array of ticker data")
     p.add_argument("--stdin", action="store_true", help="Read JSON from stdin")
-    common_args(p)
 
     # hackernews
     p = sub.add_parser("hackernews", aliases=["hn"], help="Hacker News top stories")
     p.add_argument("--count", type=int, default=10,
                    help="Number of stories to fetch (default: 10)")
-    common_args(p)
 
     # monitor
     p = sub.add_parser("monitor", help="Site uptime monitor")
@@ -797,14 +743,12 @@ def main():
                    help="'Title=https://url' or just URL (repeat for each)")
     p.add_argument("--timeout", type=int, default=10,
                    help="Request timeout in seconds (default: 10)")
-    common_args(p)
 
     # monthcal
     p = sub.add_parser("monthcal", help="Month calendar grid")
     p.add_argument("--year", type=int, default=0, help="Year (default: current)")
     p.add_argument("--month", type=int, default=0, help="Month 1-12 (default: current)")
     p.add_argument("--highlight", action="append", help="Day number to highlight (repeat)")
-    common_args(p)
 
     args = parser.parse_args()
 
