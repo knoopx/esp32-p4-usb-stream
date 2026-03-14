@@ -75,7 +75,7 @@ function createEmitter(library: Library) {
     delete resolved.children;
 
     // Merge JSX children into the schema's child slot
-    const childSlot = order.find((k) => k === "children" || k === "items" || k === "columns");
+    const childSlot = order.find((k) => k === "children" || k === "items" || k === "columns" || k === "tags");
     if (props.children != null && childSlot) {
       const kids = Array.isArray(props.children) ? props.children : [props.children];
       resolved[childSlot] = kids;

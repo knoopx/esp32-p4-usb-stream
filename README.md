@@ -1,8 +1,34 @@
 # waveshare-genui
 
-Rust firmware + generative UI toolkit for the **Waveshare ESP32-P4-WIFI6-Touch-LCD-4B**. Write display UIs as JSX or [openui-lang](https://github.com/thesysdev/openui), render to images, and send over serial to the 720×720 IPS LCD.
+A toolkit for driving the [Waveshare ESP32-P4-WIFI6-Touch-LCD-4B](https://www.waveshare.com/esp32-p4-touch-lcd-4b.htm) 720×720 IPS display.
 
-## Hardware
+| | | |
+|:---:|:---:|:---:|
+| ![Reading files](genui/demos/reading-files.jpg) | ![Test results](genui/demos/test-results.jpg) | ![Bug fix](genui/demos/bug-fix.jpg) |
+
+---
+
+## Firmware
+
+Rust application targeting the ESP32-P4 via `esp-idf-sys`. Receives WebP-encoded frames over UART, decodes them, converts to RGB565, and writes to the MIPI DSI framebuffer.
+
+### Features
+
+- **Priority scheduling** — three levels (`low`, `normal`, `high`). Higher priority frames preempt lower ones; each level has a minimum display hold time (1s, 3s, 5s).
+- **Automatic sleep** — backlight turns off after 60s of no serial activity, wakes on the next received byte.
+- **Power commands** — the host can explicitly turn the display on or off.
+
+### Serial protocol
+
+WebP frames over UART at 921600 baud:
+
+```
+Frame:    "DWBP" (4B) + data_len (u32 LE) + chunk_size (u16 LE) + priority (u8) + reserved (u8)
+Flow:     header → ACK → [chunk → ACK]... → final ACK
+Command:  "DCMD" + cmd (u8) → ACK    (0x00 = off, 0x01 = on)
+```
+
+### Hardware
 
 | Feature | Detail |
 |---------|--------|
@@ -11,132 +37,99 @@ Rust firmware + generative UI toolkit for the **Waveshare ESP32-P4-WIFI6-Touch-L
 | PSRAM | 32 MB @ 200 MHz |
 | Connection | Single USB cable (CH343 USB-to-UART bridge) |
 
-## Demos
+### Building
 
-Photos of the 720×720 IPS display running live genui frames driven by an AI coding agent:
-
-| | | |
-|:---:|:---:|:---:|
-| ![Reading files](genui/demos/reading-files.jpg) | ![Test results](genui/demos/test-results.jpg) | ![Bug fix](genui/demos/bug-fix.jpg) |
-| Reading source files | Test results dashboard | Bug fix summary |
-
-## Screenshots
-
-| | | |
-|:---:|:---:|:---:|
-| ![Clock](screenshots/clock.png) | ![Calendar](screenshots/calendar.png) | ![Tasks](screenshots/tasks.png) |
-| Clock | Calendar | Tasks |
-| ![Stocks](screenshots/stocks.png) | ![Hacker News](screenshots/hackernews.png) | ![Departures](screenshots/departures.png) |
-| Stocks | Hacker News | Departures |
-| ![Monitor](screenshots/monitor.png) | ![Gauge](screenshots/gauge.png) | ![Progress](screenshots/progress.png) |
-| Monitor | Gauge | Progress |
-| ![GitHub](screenshots/github.png) | ![Notification](screenshots/notify.png) | ![Message](screenshots/message.png) |
-| GitHub | Notification | Message |
-| ![Table](screenshots/table.png) | ![List](screenshots/list.png) | ![User](screenshots/user.png) |
-| Table | List | User |
-| ![System](screenshots/system.png) |  |  |
-| System |  |  |
-
-## How It Works
-
-```
-JSX / openui-lang      satori           resvg + sharp       UART
-┌─────────────────┐  ┌───────────┐    ┌─────────────┐    ┌─────────┐
-│ emit() or       │─→│ JSX → SVG │───→│ PNG → WebP  │───→│ chunked │
-│ parser.parse()  │  │ (yoga)    │    │ (rotate)    │    │ serial  │
-└─────────────────┘  └───────────┘    └─────────────┘    └─────────┘
+```bash
+nix develop path:. --command make flash
 ```
 
-1. **Write UI** as JSX (using the component library) or openui-lang text
-2. **Emit** JSX to openui-lang via `emit()`, or feed text directly to the parser
-3. **satori** renders the component tree to SVG using yoga layout
-4. **resvg + sharp** convert to WebP, rotated 180° for the display orientation
-5. The frame is sent over **serial** using the DWBP chunked protocol
+### Source layout
 
-For LLM-driven UIs, the CLI generates a **system prompt** from the component library that instructs the model to output valid openui-lang.
+```
+src/main.rs           Frame receiver, priority scheduler, sleep logic
+components/bsp/       Board support: display init, UART, backlight PWM
+```
 
-## Component Library
+---
 
-| Component | Description |
-|-----------|-------------|
-| `Canvas` | 720×720 root container (required) |
-| `Header` | Accent bar + icon + title |
-| `Content` | Padded content area below header |
-| `Stack` | Flex container (row/column, gap, wrap) |
-| `Alert` | Emphasized callout with icon and message |
-| `EmptyState` | Centered no-data / fallback state |
-| `Card` | Elevated card with subtle background |
-| `Text` | Text block with size/weight/color |
-| `Icon` | Nerd Font glyph |
-| `Badge` | Colored pill label |
-| `KeyValue` | Compact label-value row |
-| `Stat` | KPI / metric card |
-| `Separator` | Horizontal divider |
-| `Spacer` | Flexible space filler |
-| `Table` / `Col` | Data table with headers |
-| `List` / `ListItem` | Vertical list with icons |
-| `Gauge` | Circular arc gauge |
-| `ProgressBar` | Horizontal progress bar |
-| `Sparkline` | Mini line chart |
-| `StatusDot` | Green/red status indicator |
-| `Timestamp` | Auto-updating time display |
+## CLI
 
-## Usage
+Node/Bun command-line tool that bridges the UI library and the display. It parses openui-lang input, rasterizes it to a WebP image, and sends it over serial.
 
-### CLI
+### Rasterization pipeline
+
+```
+openui-lang → React element tree → SVG (satori/yoga) → PNG (resvg) → WebP (sharp, rotated 180°) → UART
+```
+
+### Usage
 
 ```bash
 # Pipe openui-lang to the display
 bun run examples/clock.tsx | waveshare-genui -
 
-# Render to PNG instead
+# Render to PNG instead of sending
 bun run examples/stocks.tsx AAPL MSFT | waveshare-genui - -o stocks.png
 
-# Read a .oui file
+# Read an .oui file
 waveshare-genui dashboard.oui
 
-# Print the LLM system prompt
+# Generate the LLM system prompt
 waveshare-genui prompt
 
-# Print the JSON schema
+# Generate the JSON schema
 waveshare-genui schema
 
-# Display power
+# Display power control
 waveshare-genui on
 waveshare-genui off
 ```
 
-### JSX Emitter
+### Options
 
-Write UIs as typed JSX and emit openui-lang:
+| Flag | Description |
+|------|-------------|
+| `-p, --port <path>` | Serial port (default: `/dev/ttyACM0`) |
+| `-o, --output <file>` | Write PNG instead of sending to display |
+| `--priority <level>` | Frame priority: `low`, `normal`, `high` |
+| `--theme <file>` | Base16 theme JSON |
+| `--rotate <degrees>` | Output rotation (default: `180`) |
 
-```tsx
-import React from "react";
-import { emit } from "./src/emit";
-import { Canvas, Header, Content, List, ListItem, Timestamp } from "./src/library";
+### Source layout
 
-emit(
-  <Canvas>
-    <Header icon={"\uf201"} title="Market" />
-    <Content>
-      <List>
-        <ListItem text="AAPL" secondary="$178.52" icon={"\uf201"} />
-        <ListItem text="MSFT" secondary="$415.80" icon={"\uf201"} />
-      </List>
-    </Content>
-    <Timestamp />
-  </Canvas>,
-);
+```
+genui/src/index.tsx       CLI entry point, argument parsing
+genui/src/rasterizer.ts   satori → resvg → sharp pipeline
+genui/src/serial.ts       DWBP chunked serial protocol
+genui/src/theme.ts        Base16 theme loading
 ```
 
-### openui-lang Syntax
+---
+
+## UI Library
+
+A component library built on [`@openuidev/react-lang`](https://github.com/thesysdev/openui). UIs can be authored as **JSX** or **[openui-lang](https://www.openui.com/docs/openui-lang)** — both produce the same output.
+
+Each component is defined with a Zod schema (which sets positional argument order for openui-lang) and a satori-compatible React renderer. The library also generates LLM system prompts so models can output valid openui-lang directly.
+
+### Source layout
+
+```
+genui/src/components.tsx    Component definitions (Zod schemas + renderers)
+genui/src/library.ts        Library assembly, component groups, prompt config
+genui/src/openui-parser.tsx  openui-lang text → React element tree
+genui/src/openui-emitter.tsx JSX → openui-lang text
+genui/src/tokens.ts          Design tokens (spacing, colors, fonts, sizes)
+```
+
+### Authoring with openui-lang
 
 ```
 root = Canvas([header, content, ts])
 header = Header("\uf201", "Market")
-content = Content([card1, card2], 14)
+content = Content([card1, card2], "sm")
 card1 = Card([row1, spark1])
-row1 = Stack([sym, price], "row", "s", "center", "between")
+row1 = Stack([sym, price], "row", "sm", "center", "between")
 sym = Text("AAPL", "md", "bold", "muted")
 price = Text("$178.52", "lg", "bold")
 spark1 = Sparkline([170, 172, 175, 173, 178], "green")
@@ -144,80 +137,94 @@ card2 = Card([Text("MSFT — $415.80", "lg", "bold")])
 ts = Timestamp()
 ```
 
-## Examples
+### Authoring with JSX
 
-Production-ready scripts that fetch live data and output openui-lang to stdout:
+```tsx
+import { emit } from "./src/openui-emitter";
+import { Canvas, Header, Content, List, ListItem, Timestamp } from "./src/components";
 
-| Example | Usage | Data Source |
-|---------|-------|-------------|
-| `clock.tsx` | `[--12h]` | System clock |
-| `message.tsx` | `<text>` or `--stdin` | CLI argument |
-| `notify.tsx` | `<title> [body] [--icon]` | CLI arguments |
-| `calendar.tsx` | `[--max N] [--today]` | Google Calendar via gog |
-| `tasks.tsx` | `[--list-id ID] [--max N]` | Google Tasks via gog |
-| `departures.tsx` | `--station-id ID [--station NAME]` | Rodalies API |
-| `stocks.tsx` | `AAPL MSFT BTC-USD` | Yahoo Finance |
-| `github.tsx` | `owner/repo [...]` | GitHub API |
-| `hackernews.tsx` | `[--count N]` | Hacker News API |
-| `monitor.tsx` | `-s "Name=url" [...]` | Live HTTP checks |
-| `gauge.tsx` | `[-g "Label:val:max:unit"]` | System stats or custom |
-| `progress.tsx` | `[-i "Label:val:max"]` | Disk usage or custom |
-| `table.tsx` | `[--json] [--stdin]` | Process list or custom |
-| `list.tsx` | `[-i "text:detail"] [--json]` | Nix profile or custom |
-| `user.tsx` | | Current logged-in user + session |
-| `system.tsx` | | Live system information summary |
+emit(
+  <Canvas>
+    <Header icon={"\uf201"} title="Market" />
+    <Content>
+      <List items={[
+        <ListItem text="AAPL" secondary="$178.52" icon={"\uf201"} />,
+        <ListItem text="MSFT" secondary="$415.80" icon={"\uf201"} />,
+      ]} />
+    </Content>
+    <Timestamp />
+  </Canvas>,
+);
+```
+
+### Components
+
+30 components across five groups.
+
+#### Layout
+
+`Canvas` · `Header` · `Content` · `Stack` · `Card` · `Separator` · `Spacer`
+
+| | | |
+|:---:|:---:|:---:|
+| ![Header](screenshots/components/header.png) | ![Stack](screenshots/components/stack.png) | ![Card](screenshots/components/card.png) |
+| Header | Stack | Card |
+
+#### Content
+
+`Text` · `Icon` · `Badge` · `CodeBlock` · `Alert` · `EmptyState` · `Timestamp`
+
+| | | |
+|:---:|:---:|:---:|
+| ![Text](screenshots/components/text.png) | ![Badge & Icon](screenshots/components/badge-icon.png) | ![CodeBlock](screenshots/components/codeblock.png) |
+| Text | Badge & Icon | CodeBlock |
+| ![Alert](screenshots/components/alert.png) | ![EmptyState](screenshots/components/emptystate.png) | |
+| Alert | EmptyState | |
+
+#### Data Display
+
+`Table` · `Col` · `List` · `ListItem` · `KeyValue` · `Stat` · `Steps` · `StepsItem` · `TagBlock` · `Tag`
+
+| | | |
+|:---:|:---:|:---:|
+| ![Table](screenshots/components/table.png) | ![List](screenshots/components/list.png) | ![KeyValue](screenshots/components/keyvalue.png) |
+| Table | List | KeyValue |
+| ![Stat](screenshots/components/stat.png) | ![Steps](screenshots/components/steps.png) | ![TagBlock](screenshots/components/tagblock.png) |
+| Stat | Steps | TagBlock |
+
+#### Data Visualization
+
+`Gauge` · `ProgressBar` · `Sparkline` · `StatusDot`
+
+| | | |
+|:---:|:---:|:---:|
+| ![Gauge](screenshots/components/gauge.png) | ![ProgressBar](screenshots/components/progressbar.png) | ![Sparkline](screenshots/components/sparkline.png) |
+| Gauge | ProgressBar | Sparkline |
+| ![StatusDot](screenshots/components/statusdot.png) | | |
+| StatusDot | | |
+
+#### Media
+
+`QRCode` · `Image`
+
+| | | |
+|:---:|:---:|:---:|
+| ![QRCode](screenshots/components/qrcode.png) | ![Image](screenshots/components/image.png) | |
+| QRCode | Image | |
+
+### Installing
 
 ```bash
-# Live stock ticker on display
-bun run examples/stocks.tsx AAPL MSFT BTC-USD | waveshare-genui -
-
-# Train departures
-bun run examples/departures.tsx --station-id 78805 --station "Passeig de Gràcia" | waveshare-genui -
-
-# Site monitoring
-bun run examples/monitor.tsx -s "GitHub=https://github.com" -s "Google=https://google.com" | waveshare-genui -
-```
-
-## Architecture
-
-```
-genui/
-  src/
-    library.tsx     Component definitions (schema + renderer)
-    emit.tsx        JSX → openui-lang emitter
-    openui.tsx      openui-lang → React element parser
-    tokens.ts       Design tokens (spacing, colors, fonts)
-    theme.ts        Base16 theme loading
-    render.ts       satori → resvg → sharp pipeline
-    display.ts      Serial protocol (DWBP chunked)
-    index.tsx       CLI entry point
-  examples/
-    *.tsx           Production scripts (live data, CLI args)
-  scripts/
-    screenshots.tsx  Render mock JSX to PNG (deterministic)
-```
-
-## Protocol
-
-WebP frames over UART at 921600 baud:
-
-```
-Header: "DWBP" (4B) + length (u32 LE) + chunk_size (u16 LE) + reserved (u16)
-Flow:   header → ACK → [chunk → ACK]... → done ACK
-```
-
-## Build
-
-```bash
-# Firmware
-nix develop path:. --command make flash
-
-# Host CLI
 cd genui && bun install
+```
 
-# Screenshots (mock data, no network)
+### Regenerating component screenshots
+
+```bash
 cd genui && bun run screenshots
 ```
+
+---
 
 ## License
 

@@ -82,17 +82,17 @@ export const Stack = defineComponent({
     children: z.array(ElementChild),
     direction: z.enum(["row", "column"]).optional(),
     gap: gapEnum.optional(),
-    align: z.enum(["start", "center", "end", "stretch"]).optional(),
-    justify: z.enum(["start", "center", "end", "between", "around"]).optional(),
+    align: z.enum(["start", "center", "end", "stretch", "baseline"]).optional(),
+    justify: z.enum(["start", "center", "end", "between", "around", "evenly"]).optional(),
     wrap: z.boolean().optional(),
   }),
   description:
-    'Flex container. direction: "row"|"column" (default "column"). gap: "none"(0)|"xs"(4)|"sm"(8)|"md"(16)|"lg"(24)|"xl"(32).',
+    'Flex container. direction: "row"|"column" (default "column"). gap: "none"(0)|"xs"(4)|"sm"(8)|"md"(16)|"lg"(24)|"xl"(32). align: "start"|"center"|"end"|"stretch"|"baseline". justify: "start"|"center"|"end"|"between"|"around"|"evenly".',
   component: ({ props, renderNode }) => {
     const justify = (props.justify as string) ?? "start";
-    const needsSpace = justify === "center" || justify === "between" || justify === "around";
-    const alignMap: Record<string, string> = { start: "flex-start", center: "center", end: "flex-end", stretch: "stretch" };
-    const justifyMap: Record<string, string> = { start: "flex-start", center: "center", end: "flex-end", between: "space-between", around: "space-around" };
+    const needsSpace = justify === "center" || justify === "between" || justify === "around" || justify === "evenly";
+    const alignMap: Record<string, string> = { start: "flex-start", center: "center", end: "flex-end", stretch: "stretch", baseline: "baseline" };
+    const justifyMap: Record<string, string> = { start: "flex-start", center: "center", end: "flex-end", between: "space-between", around: "space-around", evenly: "space-evenly" };
     return (
       <div
         style={{
@@ -374,21 +374,28 @@ export const Card = defineComponent({
   name: "Card",
   props: z.object({
     children: z.array(ElementChild),
+    variant: z.enum(["card", "sunk", "clear"]).optional(),
   }),
-  description: "Elevated card container with subtle background and rounded corners.",
-  component: ({ props, renderNode }) => (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        backgroundColor: UI.card.background(),
-        borderRadius: UI.card.radius,
-        padding: UI.card.padding,
-      }}
-    >
-      {renderNode(props.children)}
-    </div>
-  ),
+  description: 'Container with visual style. variant: "card" (default, elevated), "sunk" (recessed), "clear" (transparent, padding only).',
+  component: ({ props, renderNode }) => {
+    const variant = (props.variant as string) ?? "card";
+    const bg = variant === "clear" ? "transparent" : variant === "sunk" ? surface.track() : UI.card.background();
+    const border = variant === "sunk" ? `1px solid ${UI.separator.color()}` : "none";
+    return (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          backgroundColor: bg,
+          borderRadius: variant === "clear" ? 0 : UI.card.radius,
+          padding: UI.card.padding,
+          ...(border !== "none" ? { borderWidth: 1, borderStyle: "solid", borderColor: UI.separator.color() } : {}),
+        }}
+      >
+        {renderNode(props.children)}
+      </div>
+    );
+  },
 });
 
 export const KeyValue = defineComponent({
@@ -481,9 +488,10 @@ export const Col = defineComponent({
   name: "Col",
   props: z.object({
     label: z.string(),
+    type: z.enum(["string", "number"]).optional(),
     align: z.enum(["left", "center", "right"]).optional(),
   }),
-  description: "Column definition for Table.",
+  description: 'Column definition for Table. type: "string" (left-aligned) or "number" (right-aligned). align overrides type default.',
   component: () => null,
 });
 
@@ -501,31 +509,31 @@ export const Table = defineComponent({
     const colW = `${Math.floor(100 / columns.length)}%`;
     const alignMap: Record<string, string> = { left: "flex-start", center: "center", right: "flex-end" };
 
+    function colAlign(c: any): string {
+      if (c.props?.align) return c.props.align;
+      if (c.props?.type === "number") return "right";
+      return "left";
+    }
+
     return (
       <div style={{ display: "flex", flexDirection: "column", width: "100%" }}>
         <div style={{ display: "flex", flexDirection: "row", height: UI.table.headerHeight, width: "100%" }}>
-          {columns.map((c: any, j: number) => {
-            const colAlign = c.props?.align ?? "left";
-            return (
-              <div key={j} style={{ display: "flex", width: colW, alignItems: "center", justifyContent: alignMap[colAlign] ?? "flex-start", fontSize: UI.table.headerFontSize, fontWeight: FONT_WEIGHT.bold, color: ACCENT, paddingLeft: UI.table.cellPaddingX, paddingRight: UI.table.cellPaddingX }}>
+          {columns.map((c: any, j: number) => (
+              <div key={j} style={{ display: "flex", width: colW, alignItems: "center", justifyContent: alignMap[colAlign(c)] ?? "flex-start", fontSize: UI.table.headerFontSize, fontWeight: FONT_WEIGHT.bold, color: ACCENT, paddingLeft: UI.table.cellPaddingX, paddingRight: UI.table.cellPaddingX }}>
                 {c.props?.label ?? String(c)}
               </div>
-            );
-          })}
+          ))}
         </div>
         <div style={{ display: "flex", height: SIZE.separator, backgroundColor: UI.separator.color(), flexShrink: 0, width: "100%" }} />
         {rows.map((row: any, i: number) => {
           const cells = asArray(row);
           return (
             <div key={i} style={{ display: "flex", flexDirection: "row", height: UI.table.rowHeight, width: "100%", backgroundColor: i % 2 === 0 ? UI.table.zebraBackground() : BG }}>
-              {cells.map((cell: any, j: number) => {
-                const colAlign = (columns[j] as any)?.props?.align ?? "left";
-                return (
-                  <div key={j} style={{ display: "flex", width: colW, alignItems: "center", justifyContent: alignMap[colAlign] ?? "flex-start", fontSize: UI.table.cellFontSize, color: FG, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", paddingLeft: UI.table.cellPaddingX, paddingRight: UI.table.cellPaddingX }}>
+              {cells.map((cell: any, j: number) => (
+                  <div key={j} style={{ display: "flex", width: colW, alignItems: "center", justifyContent: alignMap[colAlign(columns[j])] ?? "flex-start", fontSize: UI.table.cellFontSize, color: FG, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis", paddingLeft: UI.table.cellPaddingX, paddingRight: UI.table.cellPaddingX }}>
                     {String(cell ?? "")}
                   </div>
-                );
-              })}
+              ))}
             </div>
           );
         })}
@@ -713,6 +721,134 @@ export const Timestamp = defineComponent({
     const ts = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
     return (
       <div style={{ display: "flex", position: "absolute", bottom: UI.timestamp.inset, right: UI.timestamp.inset, fontSize: UI.timestamp.fontSize, color: surface.dim() }}>{ts}</div>
+    );
+  },
+});
+
+// ─── Code Display ─────────────────────────────────────────────────────────────
+
+export const CodeBlock = defineComponent({
+  name: "CodeBlock",
+  props: z.object({
+    language: z.string(),
+    codeString: z.string(),
+  }),
+  description: "Displays a code block with language label and monospace font. Renders as a sunk card with the language badge.",
+  component: ({ props }) => (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        backgroundColor: surface.track(),
+        borderRadius: UI.card.radius,
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ display: "flex", padding: `${SPACE.xs}px ${SPACE.md}px`, backgroundColor: surface.overlay() }}>
+        <span style={{ fontSize: FONT.xs, fontWeight: FONT_WEIGHT.bold, color: surface.muted(), textTransform: "uppercase" as const }}>{props.language}</span>
+      </div>
+      <div style={{ display: "flex", padding: SPACE.md, overflow: "hidden" }}>
+        <span style={{ fontFamily: "Nerd", fontSize: FONT.sm, color: FG, lineHeight: 1.4, whiteSpace: "pre-wrap", overflowWrap: "break-word" }}>{props.codeString}</span>
+      </div>
+    </div>
+  ),
+});
+
+// ─── Steps ────────────────────────────────────────────────────────────────────
+
+export const StepsItem = defineComponent({
+  name: "StepsItem",
+  props: z.object({
+    title: z.string(),
+    details: z.string().optional(),
+  }),
+  description: "A single step with title and optional details text.",
+  component: () => null,
+});
+
+export const Steps = defineComponent({
+  name: "Steps",
+  props: z.object({
+    items: z.array(StepsItem.ref),
+  }),
+  description: "Numbered sequential step list. Each step has a title and optional details.",
+  component: ({ props }) => {
+    const items = asArray(props.items);
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: SPACE.sm }}>
+        {items.map((item: any, i: number) => {
+          const p = item.props ?? {};
+          const isLast = i === items.length - 1;
+          return (
+            <div key={i} style={{ display: "flex", flexDirection: "row", gap: SPACE.md }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, width: 32 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 16, backgroundColor: semanticColor("accent"), color: BG, fontSize: FONT.sm, fontWeight: FONT_WEIGHT.bold, flexShrink: 0 }}>
+                  {String(i + 1)}
+                </div>
+                {!isLast && <div style={{ display: "flex", width: 2, flexGrow: 1, backgroundColor: UI.separator.color(), marginTop: SPACE.xs, marginBottom: SPACE.xs }} />}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: SPACE.xs, paddingTop: SPACE.xs, paddingBottom: isLast ? 0 : SPACE.md, minWidth: 0 }}>
+                <span style={{ fontSize: FONT.md, fontWeight: FONT_WEIGHT.bold, color: FG, lineHeight: UI.text.lineHeight }}>{p.title}</span>
+                {p.details && <span style={{ fontSize: FONT.sm, color: surface.muted(), lineHeight: UI.text.lineHeight }}>{p.details}</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  },
+});
+
+// ─── Tags ─────────────────────────────────────────────────────────────────────
+
+export const Tag = defineComponent({
+  name: "Tag",
+  props: z.object({
+    text: z.string(),
+    icon: z.string().optional(),
+    color: colorEnum.optional(),
+  }),
+  description: "Labeled tag pill with optional icon. color defaults to muted.",
+  component: () => null,
+});
+
+export const TagBlock = defineComponent({
+  name: "TagBlock",
+  props: z.object({
+    tags: z.array(Tag.ref),
+  }),
+  description: "Flow-wrapped group of Tag components.",
+  component: ({ props }) => {
+    const tags = asArray(props.tags);
+    return (
+      <div style={{ display: "flex", flexDirection: "row", flexWrap: "wrap", gap: SPACE.sm }}>
+        {tags.map((tag: any, i: number) => {
+          const p = tag.props ?? {};
+          const color = semanticColor((p.color as string) ?? "muted");
+          return (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: SPACE.xs,
+                backgroundColor: surface.elevated(),
+                borderRadius: UI.badge.radius,
+                paddingLeft: SPACE.sm,
+                paddingRight: SPACE.sm,
+                paddingTop: SPACE.xs,
+                paddingBottom: SPACE.xs,
+                borderWidth: 1,
+                borderStyle: "solid",
+                borderColor: color,
+              }}
+            >
+              {p.icon && <span style={{ fontFamily: "Nerd", fontSize: FONT.sm, color, flexShrink: 0 }}>{p.icon}</span>}
+              <span style={{ fontSize: FONT.sm, color, fontWeight: FONT_WEIGHT.bold }}>{p.text}</span>
+            </div>
+          );
+        })}
+      </div>
     );
   },
 });

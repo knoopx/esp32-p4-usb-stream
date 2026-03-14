@@ -25,6 +25,11 @@ import {
   Col,
   List,
   ListItem,
+  CodeBlock,
+  Steps,
+  StepsItem,
+  Tag,
+  TagBlock,
   Gauge,
   ProgressBar,
   Sparkline,
@@ -38,32 +43,38 @@ import {
 const componentGroups: ComponentGroup[] = [
   {
     name: "Layout",
-    components: ["Canvas", "Header", "Content", "Stack", "Alert", "EmptyState", "Card", "Separator", "Spacer"],
+    components: ["Canvas", "Header", "Content", "Stack", "Card", "Separator", "Spacer"],
     notes: [
       "- Canvas is always root. Header + Content is the standard page pattern.",
       '- Stack(direction="row") for horizontal, Stack(direction="column") for vertical.',
       '- Stack(direction="row", wrap=true) for grid layouts (e.g., 2×2 gauges).',
-      "- Alert highlights important state changes or failures.",
-      "- EmptyState is a good fallback when there is no data to show.",
+      '- Stack supports align="baseline" for text-aligned rows and justify="evenly" for equal spacing.',
+      '- Card(variant="card") is elevated (default), "sunk" is recessed, "clear" is transparent.',
     ],
   },
   {
     name: "Content",
-    components: ["Text", "Icon", "Badge", "Timestamp"],
+    components: ["Text", "Icon", "Badge", "CodeBlock", "Alert", "EmptyState", "Timestamp"],
     notes: [
       '- Icon glyphs are Nerd Font Unicode escapes like "\\uf058" (check), "\\uf073" (calendar).',
       "- Timestamp auto-displays current time; place as last Canvas child.",
+      "- CodeBlock: displays code with a language label and monospace font.",
+      "- Alert highlights important state changes or failures.",
+      "- EmptyState is a good fallback when there is no data to show.",
       "- All components share the same color options: default, muted, accent, green, red, yellow, cyan, orange, purple.",
     ],
   },
   {
     name: "Data Display",
-    components: ["Table", "Col", "List", "ListItem", "KeyValue", "Stat"],
+    components: ["Table", "Col", "List", "ListItem", "KeyValue", "Stat", "Steps", "StepsItem", "TagBlock", "Tag"],
     notes: [
       "- Table: define Col references first, then pass rows as 2D array.",
+      '- Col type="number" auto-aligns right; explicit align overrides type default.',
       "- List: define ListItem references, then pass as items array.",
       "- KeyValue is ideal for metadata and settings summaries.",
       "- Stat is ideal for dashboard KPI cards and metric grids.",
+      "- Steps: numbered sequential process with title and optional details per step.",
+      "- TagBlock: flow-wrapped group of Tag pills with optional icons and colors.",
       "- Display fits ~12 table rows or ~8 list items.",
     ],
   },
@@ -167,6 +178,27 @@ content = Content([alert, empty], "lg")
 alert = Alert("Maintenance Window", "Production deploys are paused until 22:00.", "\\uf071", "yellow")
 empty = EmptyState("No pending deploys", "Everything is shipped. Check back after the freeze.", "\\uf058", "green")
 ts = Timestamp()`,
+
+  `Example — Steps process:
+root = Canvas([header, content, ts])
+header = Header("\\uf0ae", "Setup Guide")
+content = Content([steps])
+steps = Steps([StepsItem("Install dependencies", "Run bun install in the project root."), StepsItem("Configure environment", "Copy .env.example to .env and fill in values."), StepsItem("Start development", "Run bun run dev to launch the dev server.")])
+ts = Timestamp()`,
+
+  `Example — Code block:
+root = Canvas([header, content, ts])
+header = Header("\\uf121", "Snippet")
+content = Content([code])
+code = CodeBlock("typescript", "const greeting = (name: string) =>\\n  \`Hello, \${name}!\`;\\n\\nconsole.log(greeting(\\"world\\"));")
+ts = Timestamp()`,
+
+  `Example — Tag cloud:
+root = Canvas([header, content, ts])
+header = Header("\\uf02c", "Topics")
+content = Content([tags])
+tags = TagBlock([Tag("TypeScript", "\\uf121", "accent"), Tag("React", "\\uf41b", "cyan"), Tag("Rust", "\\ue7a8", "orange"), Tag("NixOS", "\\uf313", "purple"), Tag("Docker", "\\uf308", "blue")])
+ts = Timestamp()`,
 ];
 
 const additionalRules: string[] = [
@@ -187,21 +219,26 @@ export const library = createLibrary({
     Header,
     Content,
     Stack,
-    Alert,
-    EmptyState,
     Card,
     Separator,
     Spacer,
     Text,
     Icon,
     Badge,
-    KeyValue,
-    Stat,
+    CodeBlock,
+    Alert,
+    EmptyState,
     Timestamp,
     Table,
     Col,
     List,
     ListItem,
+    KeyValue,
+    Stat,
+    Steps,
+    StepsItem,
+    TagBlock,
+    Tag,
     Gauge,
     ProgressBar,
     Sparkline,

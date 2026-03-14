@@ -246,6 +246,100 @@ ts = Timestamp()`;
     });
   });
 
+  describe("given source with CodeBlock", () => {
+    const source = `root = Canvas([content, ts])
+content = Content([code])
+code = CodeBlock("typescript", "const x = 42;")
+ts = Timestamp()`;
+
+    describe("when parsing", () => {
+      it("then accepts CodeBlock with language and code", () => {
+        const { element, warnings } = parseOpenUILang(source, library);
+        expect(element).toBeDefined();
+        expect(warnings).toHaveLength(0);
+      });
+    });
+  });
+
+  describe("given source with Steps", () => {
+    const source = `root = Canvas([content, ts])
+content = Content([steps])
+steps = Steps([StepsItem("First", "Do this"), StepsItem("Second", "Then this"), StepsItem("Third")])
+ts = Timestamp()`;
+
+    describe("when parsing", () => {
+      it("then accepts Steps with StepsItem children", () => {
+        const { element, warnings } = parseOpenUILang(source, library);
+        expect(element).toBeDefined();
+        expect(warnings).toHaveLength(0);
+      });
+    });
+  });
+
+  describe("given source with TagBlock and Tags", () => {
+    const source = `root = Canvas([content, ts])
+content = Content([tags])
+tags = TagBlock([Tag("TypeScript", "\\uf121", "accent"), Tag("React", "\\uf41b", "cyan"), Tag("Plain")])
+ts = Timestamp()`;
+
+    describe("when parsing", () => {
+      it("then accepts TagBlock with Tag children", () => {
+        const { element, warnings } = parseOpenUILang(source, library);
+        expect(element).toBeDefined();
+        expect(warnings).toHaveLength(0);
+      });
+    });
+  });
+
+  describe("given source with Card variant", () => {
+    const source = `root = Canvas([content, ts])
+content = Content([c1, c2, c3])
+c1 = Card([Text("Default card")])
+c2 = Card([Text("Sunk card")], "sunk")
+c3 = Card([Text("Clear card")], "clear")
+ts = Timestamp()`;
+
+    describe("when parsing", () => {
+      it("then accepts Card with variant prop", () => {
+        const { element, warnings } = parseOpenUILang(source, library);
+        expect(element).toBeDefined();
+        expect(warnings).toHaveLength(0);
+      });
+    });
+  });
+
+  describe("given source with Col type", () => {
+    const source = `root = Canvas([content, ts])
+content = Content([tbl])
+tbl = Table(cols, rows)
+cols = [Col("Name", "string"), Col("Score", "number")]
+rows = [["Alice", "95"], ["Bob", "87"]]
+ts = Timestamp()`;
+
+    describe("when parsing", () => {
+      it("then accepts Col with type prop", () => {
+        const { element, warnings } = parseOpenUILang(source, library);
+        expect(element).toBeDefined();
+        expect(warnings).toHaveLength(0);
+      });
+    });
+  });
+
+  describe("given source with Stack baseline and evenly", () => {
+    const source = `root = Canvas([content, ts])
+content = Content([row])
+row = Stack([Text("A", "xl"), Text("B", "sm")], "row", "md", "baseline", "evenly")
+ts = Timestamp()`;
+
+    describe("when parsing", () => {
+      it("then accepts baseline align and evenly justify", () => {
+        const { element, warnings } = parseOpenUILang(source, library);
+        expect(element).toBeDefined();
+        expect(warnings).toHaveLength(0);
+      });
+    });
+  });
+
   describe("given source with null props", () => {
     const source = `root = Canvas([content, ts])
 content = Content([stat])
