@@ -3,7 +3,7 @@ void React;
 import { z } from "zod";
 import { defineComponent } from "@openuidev/react-lang";
 import { UI, semanticColor } from "../../tokens";
-import { asArray } from "../helpers";
+import { asArray, maxLinesStyle, wrapTextStyle } from "../helpers";
 
 export const StepsItem = defineComponent({
   name: "StepsItem",
@@ -37,8 +37,8 @@ export const Steps = defineComponent({
                 {!isLast && <div style={{ display: "flex", width: 2, flexGrow: 1, backgroundColor: UI.separator.color(), marginTop: UI.space.xs, marginBottom: UI.space.xs }} />}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: UI.space.xs, paddingTop: UI.space.xs, paddingBottom: isLast ? 0 : UI.space.md, minWidth: 0 }}>
-                <span style={{ fontSize: UI.steps.titleSize, fontWeight: UI.fontWeight.bold, color: UI.color.fg, lineHeight: UI.text.lineHeight }}>{p.title}</span>
-                {p.details && <span style={{ fontSize: UI.steps.detailsSize, color: UI.surface.muted(), lineHeight: UI.text.lineHeight }}>{p.details}</span>}
+                <span style={{ ...wrapTextStyle, ...maxLinesStyle(3, UI.text.lineHeight), fontSize: UI.steps.titleSize, fontWeight: UI.fontWeight.bold, color: UI.color.fg, lineHeight: UI.text.lineHeight }}>{p.title}</span>
+                {p.details && <span style={{ ...wrapTextStyle, ...maxLinesStyle(3, UI.text.lineHeight), fontSize: UI.steps.detailsSize, color: UI.surface.muted(), lineHeight: UI.text.lineHeight }}>{p.details}</span>}
               </div>
             </div>
           );

@@ -40,7 +40,7 @@ export const Table = defineComponent({
       <div style={{ display: "flex", flexDirection: "column", width: "100%" }}>
         <div style={{ display: "flex", flexDirection: "row", height: UI.table.headerHeight, width: "100%" }}>
           {columns.map((c: any, j: number) => (
-              <div key={j} style={{ display: "flex", width: colW, alignItems: "center", justifyContent: alignMap[colAlign(c)] ?? "flex-start", fontSize: UI.table.headerFontSize, fontWeight: UI.fontWeight.bold, color: UI.color.accent, paddingLeft: UI.table.cellPaddingX, paddingRight: UI.table.cellPaddingX }}>
+              <div key={j} style={{ display: "flex", width: colW, alignItems: "center", justifyContent: alignMap[colAlign(c)] ?? "flex-start", fontSize: UI.table.headerFontSize, fontWeight: UI.fontWeight.bold, color: UI.color.accent, paddingLeft: UI.table.cellPaddingX, paddingRight: UI.table.cellPaddingX, minWidth: 0, overflow: "hidden", whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word" }}>
                 {c.props?.label ?? String(c)}
               </div>
           ))}

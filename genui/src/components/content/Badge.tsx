@@ -18,6 +18,8 @@ export const Badge = defineComponent({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        minWidth: 0,
+        maxWidth: "100%",
         backgroundColor: semanticColor((props.color as string) ?? "accent"),
         color: UI.color.bg,
         fontSize: UI.badge.fontSize,
@@ -27,9 +29,10 @@ export const Badge = defineComponent({
         paddingRight: UI.badge.paddingX,
         paddingTop: UI.badge.paddingY,
         paddingBottom: UI.badge.paddingY,
+        overflow: "hidden",
       }}
     >
-      {props.label}
+      <span style={{ minWidth: 0, maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{props.label}</span>
     </div>
   ),
 });

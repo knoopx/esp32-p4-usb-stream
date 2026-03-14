@@ -3,7 +3,7 @@ void React;
 import { z } from "zod";
 import { defineComponent } from "@openuidev/react-lang";
 import { UI, semanticColor } from "../../tokens";
-import { colorEnum } from "../helpers";
+import { colorEnum, maxLinesStyle, wrapTextStyle } from "../helpers";
 
 export const Stat = defineComponent({
   name: "Stat",
@@ -29,12 +29,12 @@ export const Stat = defineComponent({
         minWidth: 0,
       }}
     >
-      <span style={{ fontSize: UI.stat.labelSize, color: UI.surface.muted(), lineHeight: UI.text.lineHeight }}>{props.label}</span>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: UI.space.xs, minWidth: 0 }}>
-        <span style={{ fontSize: UI.stat.valueSize, fontWeight: UI.fontWeight.bold, color: semanticColor((props.color as string) ?? "default"), lineHeight: 1 }}>{props.value}</span>
-        {props.unit && <span style={{ fontSize: UI.stat.unitSize, color: UI.surface.dim(), lineHeight: 1.1 }}>{props.unit}</span>}
+      <span style={{ ...wrapTextStyle, ...maxLinesStyle(2, UI.text.lineHeight), fontSize: UI.stat.labelSize, color: UI.surface.muted(), lineHeight: UI.text.lineHeight }}>{props.label}</span>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: UI.space.xs, minWidth: 0, flexWrap: "wrap" }}>
+        <span style={{ ...wrapTextStyle, fontSize: UI.stat.valueSize, fontWeight: UI.fontWeight.bold, color: semanticColor((props.color as string) ?? "default"), lineHeight: 1 }}>{props.value}</span>
+        {props.unit && <span style={{ ...wrapTextStyle, fontSize: UI.stat.unitSize, color: UI.surface.dim(), lineHeight: 1.1 }}>{props.unit}</span>}
       </div>
-      {props.helper && <span style={{ fontSize: UI.stat.helperSize, color: UI.surface.dim(), lineHeight: UI.text.lineHeight }}>{props.helper}</span>}
+      {props.helper && <span style={{ ...wrapTextStyle, ...maxLinesStyle(2, UI.text.lineHeight), fontSize: UI.stat.helperSize, color: UI.surface.dim(), lineHeight: UI.text.lineHeight }}>{props.helper}</span>}
     </div>
   ),
 });

@@ -3,7 +3,7 @@ void React;
 import { z } from "zod";
 import { defineComponent } from "@openuidev/react-lang";
 import { UI, semanticColor } from "../../tokens";
-import { colorEnum, iconProp, renderIcon } from "../helpers";
+import { colorEnum, iconProp, maxLinesStyle, renderIcon, wrapTextStyle } from "../helpers";
 
 export const EmptyState = defineComponent({
   name: "EmptyState",
@@ -30,8 +30,8 @@ export const EmptyState = defineComponent({
       }}
     >
       {props.icon && renderIcon(props.icon, UI.emptyState.iconSize, semanticColor((props.color as string) ?? "muted"), renderNode)}
-      <span style={{ fontSize: UI.emptyState.titleSize, fontWeight: UI.fontWeight.bold, color: UI.color.fg, lineHeight: UI.text.lineHeight }}>{props.title}</span>
-      {props.message && <span style={{ fontSize: UI.emptyState.messageSize, color: UI.surface.muted(), lineHeight: UI.text.lineHeight }}>{props.message}</span>}
+      <span style={{ ...wrapTextStyle, ...maxLinesStyle(3, UI.text.lineHeight), fontSize: UI.emptyState.titleSize, fontWeight: UI.fontWeight.bold, color: UI.color.fg, lineHeight: UI.text.lineHeight }}>{props.title}</span>
+      {props.message && <span style={{ ...wrapTextStyle, ...maxLinesStyle(3, UI.text.lineHeight), fontSize: UI.emptyState.messageSize, color: UI.surface.muted(), lineHeight: UI.text.lineHeight }}>{props.message}</span>}
     </div>
   ),
 });

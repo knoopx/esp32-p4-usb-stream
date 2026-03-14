@@ -3,7 +3,7 @@ void React;
 import { z } from "zod";
 import { defineComponent } from "@openuidev/react-lang";
 import { UI, semanticColor, resolveIcon } from "../../tokens";
-import { colorEnum, asArray, iconStyle } from "../helpers";
+import { colorEnum, asArray, iconStyle, wrapTextStyle } from "../helpers";
 
 export const Tag = defineComponent({
   name: "Tag",
@@ -48,7 +48,7 @@ export const TagBlock = defineComponent({
               }}
             >
               {p.icon && <span style={iconStyle(UI.tagBlock.iconSize, color)}>{resolveIcon(p.icon)}</span>}
-              <span style={{ fontSize: UI.tagBlock.textSize, color, fontWeight: UI.fontWeight.bold }}>{p.text}</span>
+              <span style={{ ...wrapTextStyle, fontSize: UI.tagBlock.textSize, color, fontWeight: UI.fontWeight.bold, maxWidth: 220 }}>{p.text}</span>
             </div>
           );
         })}

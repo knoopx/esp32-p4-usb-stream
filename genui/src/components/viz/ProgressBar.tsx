@@ -3,7 +3,7 @@ void React;
 import { z } from "zod";
 import { defineComponent } from "@openuidev/react-lang";
 import { UI, semanticColor } from "../../tokens";
-import { colorEnum, percent } from "../helpers";
+import { colorEnum, maxLinesStyle, percent } from "../helpers";
 
 export const ProgressBar = defineComponent({
   name: "ProgressBar",
@@ -25,10 +25,10 @@ export const ProgressBar = defineComponent({
     const fillW = pct * (vbW / 100);
 
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: UI.progressBar.labelGap }}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <span style={{ fontSize: UI.progressBar.labelSize, fontWeight: UI.fontWeight.bold, color: UI.color.fg }}>{props.label}</span>
-          <span style={{ fontSize: UI.progressBar.valueSize, color: UI.surface.muted() }}>{display}</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: UI.progressBar.labelGap, minWidth: 0 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: UI.space.md, minWidth: 0 }}>
+          <span style={{ minWidth: 0, flexGrow: 1, flexBasis: 0, ...maxLinesStyle(2, UI.text.lineHeight), whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word", fontSize: UI.progressBar.labelSize, fontWeight: UI.fontWeight.bold, color: UI.color.fg, lineHeight: UI.text.lineHeight }}>{props.label}</span>
+          <span style={{ minWidth: 0, flexShrink: 1, maxWidth: "40%", textAlign: "right", ...maxLinesStyle(2, UI.text.lineHeight), whiteSpace: "pre-wrap", overflowWrap: "anywhere", wordBreak: "break-word", fontSize: UI.progressBar.valueSize, color: UI.surface.muted(), lineHeight: UI.text.lineHeight }}>{display}</span>
         </div>
         <svg viewBox={`0 0 ${vbW} ${h}`} width="100%" height={h} preserveAspectRatio="none">
           <rect x="0" y="0" width={vbW} height={h} rx={r} ry={r} fill={UI.surface.track()} />

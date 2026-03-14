@@ -37,6 +37,37 @@ export function percent(value: number, max: number): number {
   return max > 0 ? (value / max) * 100 : 0;
 }
 
+export const wrapTextStyle: React.CSSProperties = {
+  minWidth: 0,
+  whiteSpace: "pre-wrap",
+  overflowWrap: "anywhere",
+  wordBreak: "break-word",
+};
+
+export const ellipsisTextStyle: React.CSSProperties = {
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+
+export function maxLinesStyle(lines: number, lineHeight: number): React.CSSProperties {
+  return {
+    maxHeight: `${lines * lineHeight}em`,
+    overflow: "hidden",
+  };
+}
+
+export function multilineEllipsisStyle(lines: number, lineHeight: number): React.CSSProperties {
+  return {
+    ...maxLinesStyle(lines, lineHeight),
+    display: "-webkit-box",
+    WebkitBoxOrient: "vertical",
+    WebkitLineClamp: lines,
+    textOverflow: "ellipsis",
+  };
+}
+
 /** Consistent icon span style — every icon glyph in the system uses this. */
 export function iconStyle(size: number, color: string): React.CSSProperties {
   return {

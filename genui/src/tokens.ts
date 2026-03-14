@@ -196,6 +196,7 @@ export const UI = {
     iconSize: ICON_SIZE.md,
     titleSize: FONT.lg,
     subtitleSize: FONT.sm,
+    titleMaxLines: 3,
     contentGap: SPACE.md,
     sectionGap: SPACE.lg,
     dividerInset: PADDING,
@@ -203,7 +204,7 @@ export const UI = {
   content: {
     paddingTop: SPACE.lg,
     paddingX: PADDING,
-    paddingBottom: PADDING,
+    paddingBottom: PADDING + FONT.sm + SPACE.sm,
     defaultGap: SPACE.md,
   },
   text: {

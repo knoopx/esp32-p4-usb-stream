@@ -3,7 +3,7 @@ void React;
 import { z } from "zod";
 import { defineComponent } from "@openuidev/react-lang";
 import { UI, semanticColor } from "../../tokens";
-import { colorEnum } from "../helpers";
+import { colorEnum, wrapTextStyle } from "../helpers";
 
 export const Text = defineComponent({
   name: "Text",
@@ -18,6 +18,9 @@ export const Text = defineComponent({
   component: ({ props }) => (
     <span
       style={{
+        ...wrapTextStyle,
+        display: "block",
+        width: "100%",
         fontSize: UI.font[(props.size as keyof typeof UI.font) ?? "md"] ?? UI.font.md,
         fontWeight: (props.weight ?? "normal") === "bold" ? UI.fontWeight.bold : UI.fontWeight.normal,
         color: semanticColor((props.color as string) ?? "default"),

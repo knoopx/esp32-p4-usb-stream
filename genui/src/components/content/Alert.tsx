@@ -3,7 +3,7 @@ void React;
 import { z } from "zod";
 import { defineComponent } from "@openuidev/react-lang";
 import { UI, semanticColor } from "../../tokens";
-import { colorEnum, iconProp, renderIcon } from "../helpers";
+import { colorEnum, iconProp, maxLinesStyle, renderIcon, wrapTextStyle } from "../helpers";
 
 export const Alert = defineComponent({
   name: "Alert",
@@ -32,8 +32,8 @@ export const Alert = defineComponent({
       >
         {props.icon && renderIcon(props.icon, UI.alert.iconSize, color, renderNode)}
         <div style={{ display: "flex", flexDirection: "column", gap: UI.space.xs, flexGrow: 1, minWidth: 0 }}>
-          <span style={{ fontSize: UI.alert.titleSize, fontWeight: UI.fontWeight.bold, color: UI.color.fg, lineHeight: UI.text.lineHeight }}>{props.title}</span>
-          {props.message && <span style={{ fontSize: UI.alert.messageSize, color: UI.surface.muted(), lineHeight: UI.text.lineHeight }}>{props.message}</span>}
+          <span style={{ ...wrapTextStyle, ...maxLinesStyle(2, UI.text.lineHeight), fontSize: UI.alert.titleSize, fontWeight: UI.fontWeight.bold, color: UI.color.fg, lineHeight: UI.text.lineHeight }}>{props.title}</span>
+          {props.message && <span style={{ ...wrapTextStyle, ...maxLinesStyle(2, UI.text.lineHeight), fontSize: UI.alert.messageSize, color: UI.surface.muted(), lineHeight: UI.text.lineHeight }}>{props.message}</span>}
         </div>
       </div>
     );
