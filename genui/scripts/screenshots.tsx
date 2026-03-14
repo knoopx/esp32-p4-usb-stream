@@ -12,7 +12,7 @@ import { mkdirSync, statSync } from "fs";
 import { execFileSync } from "child_process";
 import { toOpenUILang } from "../src/openui-emitter";
 import * as _C from "../src/components";
-import { RADIUS, ICON_SIZE } from "../src/tokens";
+import { UI } from "../src/tokens";
 
 // DefinedComponent objects work as JSX element types at runtime — the emitter
 // traverses the tree structurally without calling them. Cast the import so
@@ -68,7 +68,7 @@ function renderWithFlake(outDir: string, name: string, jsx: React.ReactElement):
 const COMPONENTS: Record<string, React.ReactElement> = {
   "header": (
     <Canvas>
-      <Header icon={"\uf015"} title="Page Title" subtitle="Optional subtitle" />
+      <Header icon="home" title="Page Title" subtitle="Optional subtitle" />
       <Timestamp />
     </Canvas>
   ),
@@ -103,13 +103,13 @@ const COMPONENTS: Record<string, React.ReactElement> = {
         </Stack>
         <Separator />
         <Stack direction="row" gap="lg" align="center">
-          <Icon glyph={"\uf058"} color="green" size={40} />
-          <Icon glyph={"\uf071"} color="yellow" size={40} />
-          <Icon glyph={"\uf06a"} color="red" size={40} />
-          <Icon glyph={"\uf015"} color="accent" size={40} />
-          <Icon glyph={"\uf073"} color="cyan" size={40} />
-          <Icon glyph={"\uf001"} color="purple" size={40} />
-          <Icon glyph={"\uf0eb"} color="orange" size={40} />
+          <Icon name="check" color="green" size={40} />
+          <Icon name="warning" color="yellow" size={40} />
+          <Icon name="error" color="red" size={40} />
+          <Icon name="home" color="accent" size={40} />
+          <Icon name="calendar" color="cyan" size={40} />
+          <Icon name="music" color="purple" size={40} />
+          <Icon name="lightbulb" color="orange" size={40} />
         </Stack>
       </Content>
       <Timestamp />
@@ -179,10 +179,10 @@ const COMPONENTS: Record<string, React.ReactElement> = {
   "alert": (
     <Canvas>
       <Content gap="md">
-        <Alert title="Information" message="System update available for installation." icon={"\uf05a"} color="cyan" />
-        <Alert title="Success" message="All 42 tests passed successfully." icon={"\uf058"} color="green" />
-        <Alert title="Warning" message="Disk usage is above 90%." icon={"\uf071"} color="yellow" />
-        <Alert title="Error" message="Connection to database failed." icon={"\uf06a"} color="red" />
+        <Alert title="Information" message="System update available for installation." icon="info" color="cyan" />
+        <Alert title="Success" message="All 42 tests passed successfully." icon="check" color="green" />
+        <Alert title="Warning" message="Disk usage is above 90%." icon="warning" color="yellow" />
+        <Alert title="Error" message="Connection to database failed." icon="error" color="red" />
       </Content>
       <Timestamp />
     </Canvas>
@@ -190,14 +190,14 @@ const COMPONENTS: Record<string, React.ReactElement> = {
 
   "emptystate": (
     <Canvas>
-      <EmptyState title="No results found" message="Try adjusting your search filters or check back later." icon={"\uf002"} color="muted" />
+      <EmptyState title="No results found" message="Try adjusting your search filters or check back later." icon="search" color="muted" />
       <Timestamp />
     </Canvas>
   ),
 
   "keyvalue": (
     <Canvas>
-      <Header icon={"\uf085"} title="Settings" />
+      <Header icon="settings" title="Settings" />
       <Content>
         <Stack direction="column" gap="sm">
           <KeyValue label="Version" value="1.4.2" />
@@ -233,7 +233,7 @@ const COMPONENTS: Record<string, React.ReactElement> = {
 
   "table": (
     <Canvas>
-      <Header icon={"\uf0ce"} title="Table" />
+      <Header icon="table" title="Table" />
       <Content>
         <Table
           columns={[<Col label="Name" />, <Col label="Role" />, <Col label="Status" />]}
@@ -253,11 +253,11 @@ const COMPONENTS: Record<string, React.ReactElement> = {
 
   "list": (
     <Canvas>
-      <Header icon={"\uf03a"} title="List" />
+      <Header icon="list" title="List" />
       <Content>
         <List>
-          <ListItem text="With icon and value" secondary="Secondary text" icon={"\uf07a"} value="42" />
-          <ListItem text="With icon only" secondary="Another description" icon={"\uf126"} />
+          <ListItem text="With icon and value" secondary="Secondary text" icon="cart" value="42" />
+          <ListItem text="With icon only" secondary="Another description" icon="git" />
           <ListItem text="With value only" value="!" />
           <ListItem text="Plain item" secondary="Just text and secondary" />
           <ListItem text="Minimal item" />
@@ -358,7 +358,7 @@ const COMPONENTS: Record<string, React.ReactElement> = {
 
   "steps": (
     <Canvas>
-      <Header icon={"\uf0ae"} title="Setup Guide" />
+      <Header icon="steps" title="Setup Guide" />
       <Content>
         <Steps>
           <StepsItem title="Install dependencies" details="Run bun install in the project root." />
@@ -376,10 +376,10 @@ const COMPONENTS: Record<string, React.ReactElement> = {
       <Content gap="lg">
         <Text content="With colors" size="sm" color="muted" />
         <TagBlock>
-          <Tag text="TypeScript" icon={"\uf121"} color="accent" />
-          <Tag text="React" icon={"\uf41b"} color="cyan" />
-          <Tag text="Rust" icon={"\ue7a8"} color="orange" />
-          <Tag text="NixOS" icon={"\uf313"} color="purple" />
+          <Tag text="TypeScript" icon="code" color="accent" />
+          <Tag text="React" icon="react" color="cyan" />
+          <Tag text="Rust" icon="rust" color="orange" />
+          <Tag text="NixOS" icon="nix" color="purple" />
           <Tag text="ESP32" color="green" />
         </TagBlock>
         <Separator />
@@ -414,7 +414,7 @@ const COMPONENTS: Record<string, React.ReactElement> = {
       <Canvas>
         <Content>
           <Stack direction="column" gap="lg" align="center" justify="center">
-            <Image src={imgPath} width={560} height={420} borderRadius={RADIUS.md} />
+            <Image src={imgPath} width={560} height={420} borderRadius={UI.radius.md} />
           </Stack>
         </Content>
         <Timestamp />

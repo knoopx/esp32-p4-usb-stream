@@ -115,11 +115,18 @@ Each component is defined with a Zod schema (which sets positional argument orde
 ### Source layout
 
 ```
-genui/src/components.tsx    Component definitions (Zod schemas + renderers)
-genui/src/library.ts        Library assembly, component groups, prompt config
-genui/src/openui-parser.tsx  openui-lang text → React element tree
-genui/src/openui-emitter.tsx JSX → openui-lang text
-genui/src/tokens.ts          Design tokens (spacing, colors, fonts, sizes)
+genui/src/tokens.ts              Design tokens (single UI export)
+genui/src/components/            One file per component
+  helpers.tsx                    Shared schemas, iconStyle, utilities
+  layout/                       Canvas, Header, Content, Stack, Card, Separator, Spacer
+  content/                      Text, Icon, Badge, Alert, EmptyState, Timestamp, CodeBlock
+  data/                         Table, List, KeyValue, Stat, Steps, Tags
+  viz/                          Gauge, ProgressBar, Sparkline, StatusDot
+  media/                        QRCode, Image
+genui/src/components.tsx         Barrel exports
+genui/src/library.ts             Library assembly, component groups, prompt config
+genui/src/openui-parser.tsx      openui-lang text → React element tree
+genui/src/openui-emitter.tsx     JSX → openui-lang text
 ```
 
 ### Authoring with openui-lang
@@ -178,8 +185,11 @@ emit(
 |:---:|:---:|:---:|
 | ![Text](screenshots/components/text.png) | ![Badge & Icon](screenshots/components/badge-icon.png) | ![CodeBlock](screenshots/components/codeblock.png) |
 | Text | Badge & Icon | CodeBlock |
-| ![Alert](screenshots/components/alert.png) | ![EmptyState](screenshots/components/emptystate.png) | |
-| Alert | EmptyState | |
+
+| | |
+|:---:|:---:|
+| ![Alert](screenshots/components/alert.png) | ![EmptyState](screenshots/components/emptystate.png) |
+| Alert | EmptyState |
 
 #### Data Display
 
@@ -200,17 +210,20 @@ emit(
 |:---:|:---:|:---:|
 | ![Gauge](screenshots/components/gauge.png) | ![ProgressBar](screenshots/components/progressbar.png) | ![Sparkline](screenshots/components/sparkline.png) |
 | Gauge | ProgressBar | Sparkline |
-| ![StatusDot](screenshots/components/statusdot.png) | | |
-| StatusDot | | |
+
+| |
+|:---:|
+| ![StatusDot](screenshots/components/statusdot.png) |
+| StatusDot |
 
 #### Media
 
 `QRCode` · `Image`
 
-| | | |
-|:---:|:---:|:---:|
-| ![QRCode](screenshots/components/qrcode.png) | ![Image](screenshots/components/image.png) | |
-| QRCode | Image | |
+| | |
+|:---:|:---:|
+| ![QRCode](screenshots/components/qrcode.png) | ![Image](screenshots/components/image.png) |
+| QRCode | Image |
 
 ### Installing
 

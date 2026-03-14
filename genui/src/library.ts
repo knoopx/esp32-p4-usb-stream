@@ -5,6 +5,7 @@
 
 import { createLibrary } from "@openuidev/react-lang";
 import type { ComponentGroup, PromptOptions } from "@openuidev/react-lang";
+import { ICON_NAMES } from "./tokens";
 import {
   Canvas,
   Header,
@@ -56,7 +57,9 @@ const componentGroups: ComponentGroup[] = [
     name: "Content",
     components: ["Text", "Icon", "Badge", "CodeBlock", "Alert", "EmptyState", "Timestamp"],
     notes: [
-      '- Icon glyphs are Nerd Font Unicode escapes like "\\uf058" (check), "\\uf073" (calendar).',
+      `- Icon uses named icons: ${ICON_NAMES.join(", ")}.`,
+      '- Icon("check") renders a named icon. Icon("check", "green") adds color. Icon("check", "green", 40) adds size.',
+      "- Anywhere an icon is accepted, pass a name string or an Icon element for custom color/size.",
       "- Timestamp auto-displays current time; place as last Canvas child.",
       "- CodeBlock: displays code with a language label and monospace font.",
       "- Alert highlights important state changes or failures.",
@@ -91,8 +94,8 @@ const componentGroups: ComponentGroup[] = [
     name: "Media",
     components: ["QRCode", "Image"],
     notes: [
-      '- QRCode: renders a QR code SVG from a data string. size defaults to 400.',
-      '- Image: displays a PNG/JPG/WebP from a file path or data URI. Paths are base64-embedded automatically.',
+      "- QRCode: renders a QR code SVG from a data string. size defaults to 400.",
+      "- Image: displays a PNG/JPG/WebP from a file path or data URI. Paths are base64-embedded automatically.",
     ],
   },
 ];
@@ -102,17 +105,17 @@ const componentGroups: ComponentGroup[] = [
 const examples: string[] = [
   `Example — Notification:
 root = Canvas([header, content, ts])
-header = Header("\\uf058", "Build Complete")
+header = Header("check", "Build Complete")
 content = Content([msg])
 msg = Text("All 42 tests passed. Deployed to staging.", "xl", "normal", "muted")
 ts = Timestamp()`,
 
   `Example — List with icons:
 root = Canvas([header, content, ts])
-header = Header("\\uf03a", "To Do")
+header = Header("list", "To Do")
 content = Content([list])
 list = List(items)
-items = [ListItem("Buy groceries", "Milk, bread, eggs", "\\uf07a"), ListItem("Review PR #284", "Auth refactor", "\\uf126", "3"), ListItem("Deploy staging", "v1.2.3 RC", "\\uf0e7")]
+items = [ListItem("Buy groceries", "Milk, bread, eggs", "cart"), ListItem("Review PR #284", "Auth refactor", "git", "3"), ListItem("Deploy staging", "v1.2.3 RC", "bolt")]
 ts = Timestamp()`,
 
   `Example — Gauge dashboard:
@@ -126,8 +129,8 @@ ts = Timestamp()`,
 
   `Example — Cards with sparklines:
 root = Canvas([header, content, ts])
-header = Header("\\uf201", "Market")
-content = Content([c1, c2], 14)
+header = Header("chart", "Market")
+content = Content([c1, c2], "sm")
 c1 = Card([row1, spark1])
 row1 = Stack([sym1, price1], "row", "sm", "center", "between")
 sym1 = Text("AAPL", "md", "bold", "muted")
@@ -142,7 +145,7 @@ ts = Timestamp()`,
 
   `Example — Status monitor:
 root = Canvas([header, content, ts])
-header = Header("\\uf21b", "Monitor", "5/6 up")
+header = Header("monitor", "Monitor", "5/6 up")
 content = Content([s1, sep1, s2, sep2, s3])
 s1 = Stack([StatusDot(true), Text("API Server", "md", "bold"), Badge("142ms", "green")], "row", "md", "center")
 sep1 = Separator()
@@ -153,7 +156,7 @@ ts = Timestamp()`,
 
   `Example — Table:
 root = Canvas([header, content, ts])
-header = Header("\\uf0ce", "Team Roster")
+header = Header("table", "Team Roster")
 content = Content([tbl])
 tbl = Table(cols, rows)
 cols = [Col("Name"), Col("Role"), Col("Status")]
@@ -162,7 +165,7 @@ ts = Timestamp()`,
 
   `Example — KPI grid:
 root = Canvas([header, content, ts])
-header = Header("\\uf080", "Overview")
+header = Header("bars", "Overview")
 content = Content([grid], "md")
 grid = Stack([stat1, stat2, stat3, stat4], "row", "md", "stretch", "start", true)
 stat1 = Stat("Revenue", "$24.8k", null, "+12% vs last week", "green")
@@ -173,38 +176,46 @@ ts = Timestamp()`,
 
   `Example — Empty state with alert:
 root = Canvas([header, content, ts])
-header = Header("\\uf05a", "Deployments")
+header = Header("info", "Deployments")
 content = Content([alert, empty], "lg")
-alert = Alert("Maintenance Window", "Production deploys are paused until 22:00.", "\\uf071", "yellow")
-empty = EmptyState("No pending deploys", "Everything is shipped. Check back after the freeze.", "\\uf058", "green")
+alert = Alert("Maintenance Window", "Production deploys are paused until 22:00.", "warning", "yellow")
+empty = EmptyState("No pending deploys", "Everything is shipped. Check back after the freeze.", "check", "green")
 ts = Timestamp()`,
 
   `Example — Steps process:
 root = Canvas([header, content, ts])
-header = Header("\\uf0ae", "Setup Guide")
+header = Header("steps", "Setup Guide")
 content = Content([steps])
 steps = Steps([StepsItem("Install dependencies", "Run bun install in the project root."), StepsItem("Configure environment", "Copy .env.example to .env and fill in values."), StepsItem("Start development", "Run bun run dev to launch the dev server.")])
 ts = Timestamp()`,
 
   `Example — Code block:
 root = Canvas([header, content, ts])
-header = Header("\\uf121", "Snippet")
+header = Header("code", "Snippet")
 content = Content([code])
 code = CodeBlock("typescript", "const greeting = (name: string) =>\\n  \`Hello, \${name}!\`;\\n\\nconsole.log(greeting(\\"world\\"));")
 ts = Timestamp()`,
 
   `Example — Tag cloud:
 root = Canvas([header, content, ts])
-header = Header("\\uf02c", "Topics")
+header = Header("tag", "Topics")
 content = Content([tags])
-tags = TagBlock([Tag("TypeScript", "\\uf121", "accent"), Tag("React", "\\uf41b", "cyan"), Tag("Rust", "\\ue7a8", "orange"), Tag("NixOS", "\\uf313", "purple"), Tag("Docker", "\\uf308", "blue")])
+tags = TagBlock([Tag("TypeScript", "code", "accent"), Tag("React", "react", "cyan"), Tag("Rust", "rust", "orange"), Tag("NixOS", "nix", "purple"), Tag("Docker", "docker", "cyan")])
+ts = Timestamp()`,
+
+  `Example — Icon with custom color:
+root = Canvas([header, content, ts])
+header = Header(Icon("warning", "red"), "Alerts")
+content = Content([row])
+row = Stack([Icon("check", "green", 40), Text("All systems operational", "lg")], "row", "md", "center")
 ts = Timestamp()`,
 ];
 
 const additionalRules: string[] = [
   "Target display is 720×720 pixels. All UIs must fit this space.",
   "Always use Canvas as root. Standard pattern: Canvas([Header(...), Content([...]), Timestamp()]).",
-  "Font is limited to Inter (text) and Nerd Font (icons). Use Image component for images and QRCode for QR codes.",
+  "Use named icons everywhere: Header(\"check\", ...), Alert(..., \"warning\"), ListItem(..., \"cart\").",
+  "For custom icon color/size, use Icon element: Header(Icon(\"warning\", \"red\"), ...).",
   "Use semantic color names (default, muted, accent, green, red, yellow, cyan, orange, purple) — not hex values.",
   "All text content must be strings, not numbers.",
 ];

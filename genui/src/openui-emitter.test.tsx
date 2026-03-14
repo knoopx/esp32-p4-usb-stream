@@ -3,32 +3,18 @@ import React from "react";
 import { toOpenUILang } from "./openui-emitter";
 import { parseOpenUILang } from "./openui-parser";
 import { library } from "./library";
-import {
-  Canvas,
-  Header,
-  Content,
-  Text,
-  Timestamp,
-  Stack,
-  Badge,
-  Icon,
-  Separator,
-  Spacer,
-  Card,
-  Alert,
-  EmptyState,
-  KeyValue,
-  Stat,
-  StatusDot,
-  Gauge,
-  ProgressBar,
-  Sparkline,
-  Table,
-  Col,
-  List,
-  ListItem,
-  QRCode,
-} from "./components";
+import * as _C from "./components";
+
+// DefinedComponent objects work as JSX element types at runtime — the emitter
+// traverses the tree structurally without calling them. Cast so TypeScript
+// accepts them in JSX position.
+const C = _C as unknown as Record<string, React.FC<any>>;
+const {
+  Canvas, Header, Content, Text, Timestamp, Stack, Badge, Icon,
+  Separator, Spacer, Card, Alert, EmptyState, KeyValue, Stat,
+  StatusDot, Gauge, ProgressBar, Sparkline, Table, Col, List,
+  ListItem, QRCode,
+} = C;
 
 // Helper: emit JSX → openui-lang → parse back → verify no errors
 function roundtrip(element: React.ReactElement): string {
@@ -90,17 +76,15 @@ describe("openui-emitter", () => {
     });
   });
 
-  describe("given a Nerd Font icon glyph", () => {
+  describe("given a named icon", () => {
     describe("when emitting", () => {
-      it("then escapes PUA codepoints as \\uXXXX", () => {
+      it("then emits the icon name as a string argument", () => {
         const source = toOpenUILang(
           <Canvas>
-            <Icon glyph={"\uf058"} />
+            <Icon name="check" />
           </Canvas>,
         );
-        expect(source).toContain("\\uf058");
-        // Should not contain the raw PUA character
-        expect(source).not.toContain("\uf058");
+        expect(source).toContain('"check"');
       });
     });
   });

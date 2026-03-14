@@ -2,40 +2,34 @@ import { describe, it, expect } from "bun:test";
 import { parseOpenUILang } from "./openui-parser";
 import { library } from "./library";
 
+/** Parse source, assert element exists and no warnings. */
+function expectCleanParse(source: string) {
+  const { element, warnings } = parseOpenUILang(source, library);
+  expect(element).toBeDefined();
+  expect(element.type).toBeDefined();
+  expect(warnings).toHaveLength(0);
+}
+
 describe("openui-parser", () => {
-  describe("given minimal valid openui-lang", () => {
-    const source = `root = Canvas([ts])
-ts = Timestamp()`;
+  // ─── Clean parse cases ────────────────────────────────────────────────
 
-    describe("when parsing", () => {
-      it("then returns a React element with no warnings", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(element.type).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given a standard page layout", () => {
-    const source = `root = Canvas([header, content, ts])
-header = Header("\\uf021", "Title", "Subtitle")
+  const cleanCases: [string, string][] = [
+    [
+      "minimal valid openui-lang",
+      `root = Canvas([ts])\nts = Timestamp()`,
+    ],
+    [
+      "standard page layout",
+      `root = Canvas([header, content, ts])
+header = Header("sync", "Title", "Subtitle")
 content = Content([msg])
 msg = Text("Hello world", "lg", "bold", "accent")
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then returns a valid element tree", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with all layout components", () => {
-    const source = `root = Canvas([header, content, ts])
-header = Header("\\uf00c", "Test")
+ts = Timestamp()`,
+    ],
+    [
+      "all layout components",
+      `root = Canvas([header, content, ts])
+header = Header("check", "Test")
 content = Content([stack, card, sep, spacer])
 stack = Stack([t1, t2], "row", "md", "center", "between")
 t1 = Text("Left", "md")
@@ -44,87 +38,151 @@ card = Card([t3])
 t3 = Text("Card content")
 sep = Separator()
 spacer = Spacer()
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then accepts all layout components without error", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with data display components", () => {
-    const source = `root = Canvas([content, ts])
+ts = Timestamp()`,
+    ],
+    [
+      "data display components",
+      `root = Canvas([content, ts])
 content = Content([tbl, list, kv, stat])
 tbl = Table(cols, rows)
 cols = [Col("Name"), Col("Value")]
 rows = [["Alice", "100"], ["Bob", "200"]]
-list = List([ListItem("Item 1", "desc", "\\uf03a", "42")])
+list = List([ListItem("Item 1", "desc", "list", "42")])
 kv = KeyValue("Label", "Value", "secondary", "green")
 stat = Stat("Metric", "99", "%", "helper", "accent")
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then accepts all data display components", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with visualization components", () => {
-    const source = `root = Canvas([content, ts])
+ts = Timestamp()`,
+    ],
+    [
+      "visualization components",
+      `root = Canvas([content, ts])
 content = Content([g, pb, spark, dot])
 g = Gauge("CPU", 73, 100, "%")
 pb = ProgressBar("Progress", 65, 100, "65%", "green")
 spark = Sparkline([10, 20, 15, 25, 30], "cyan")
 dot = StatusDot(true)
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then accepts all visualization components", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with alert and empty state", () => {
-    const source = `root = Canvas([content, ts])
+ts = Timestamp()`,
+    ],
+    [
+      "alert and empty state",
+      `root = Canvas([content, ts])
 content = Content([alert, empty])
-alert = Alert("Warning", "Something happened", "\\uf071", "yellow")
-empty = EmptyState("No data", "Check later", "\\uf058", "muted")
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then accepts alert and empty state components", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with content components", () => {
-    const source = `root = Canvas([content, ts])
+alert = Alert("Warning", "Something happened", "warning", "yellow")
+empty = EmptyState("No data", "Check later", "check", "muted")
+ts = Timestamp()`,
+    ],
+    [
+      "content components (text, icon, badge)",
+      `root = Canvas([content, ts])
 content = Content([txt, icon, badge])
 txt = Text("Hello", "xl", "bold", "green", "center")
-icon = Icon("\\uf058", "accent", 32)
+icon = Icon("check", "accent", 32)
 badge = Badge("OK", "green")
-ts = Timestamp()`;
+ts = Timestamp()`,
+    ],
+    [
+      "optional props omitted",
+      `root = Canvas([content, ts])
+content = Content([txt])
+txt = Text("Just text")
+ts = Timestamp()`,
+    ],
+    [
+      "gauge dashboard pattern",
+      `root = Canvas([grid, ts])
+grid = Stack([g1, g2, g3, g4], "row", "md", "center", "center", true)
+g1 = Gauge("CPU", 73, 100, "%")
+g2 = Gauge("RAM", 4.2, 8, "GB")
+g3 = Gauge("Disk", 120, 500, "GB")
+g4 = Gauge("Temp", 62, 100, "°C")
+ts = Timestamp()`,
+    ],
+    [
+      "inline component references in arrays",
+      `root = Canvas([content, ts])
+content = Content([list])
+list = List([ListItem("A"), ListItem("B"), ListItem("C")])
+ts = Timestamp()`,
+    ],
+    [
+      "boolean props",
+      `root = Canvas([content, ts])
+content = Content([row])
+row = Stack([StatusDot(true), StatusDot(false)], "row", "md")
+ts = Timestamp()`,
+    ],
+    [
+      "numeric array values",
+      `root = Canvas([content, ts])
+content = Content([spark])
+spark = Sparkline([1, 2, 3, 4, 5])
+ts = Timestamp()`,
+    ],
+    [
+      "CodeBlock with language and code",
+      `root = Canvas([content, ts])
+content = Content([code])
+code = CodeBlock("typescript", "const x = 42;")
+ts = Timestamp()`,
+    ],
+    [
+      "Steps with StepsItem children",
+      `root = Canvas([content, ts])
+content = Content([steps])
+steps = Steps([StepsItem("First", "Do this"), StepsItem("Second", "Then this"), StepsItem("Third")])
+ts = Timestamp()`,
+    ],
+    [
+      "TagBlock with Tag children",
+      `root = Canvas([content, ts])
+content = Content([tags])
+tags = TagBlock([Tag("TypeScript", "code", "accent"), Tag("React", "react", "cyan"), Tag("Plain")])
+ts = Timestamp()`,
+    ],
+    [
+      "Card with variant prop",
+      `root = Canvas([content, ts])
+content = Content([c1, c2, c3])
+c1 = Card([Text("Default card")])
+c2 = Card([Text("Sunk card")], "sunk")
+c3 = Card([Text("Clear card")], "clear")
+ts = Timestamp()`,
+    ],
+    [
+      "Col with type prop",
+      `root = Canvas([content, ts])
+content = Content([tbl])
+tbl = Table(cols, rows)
+cols = [Col("Name", "string"), Col("Score", "number")]
+rows = [["Alice", "95"], ["Bob", "87"]]
+ts = Timestamp()`,
+    ],
+    [
+      "Stack baseline align and evenly justify",
+      `root = Canvas([content, ts])
+content = Content([row])
+row = Stack([Text("A", "xl"), Text("B", "sm")], "row", "md", "baseline", "evenly")
+ts = Timestamp()`,
+    ],
+    [
+      "null positional arguments",
+      `root = Canvas([content, ts])
+content = Content([stat])
+stat = Stat("Revenue", "$24.8k", null, "+12%", "green")
+ts = Timestamp()`,
+    ],
+  ];
 
-    describe("when parsing", () => {
-      it("then accepts text, icon, and badge", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
+  cleanCases.forEach(([label, source]) => {
+    describe(`given source with ${label}`, () => {
+      describe("when parsing", () => {
+        it("then parses without warnings", () => {
+          expectCleanParse(source);
+        });
       });
     });
   });
+
+  // ─── Edge cases ───────────────────────────────────────────────────────
 
   describe("given empty source", () => {
     describe("when parsing", () => {
@@ -143,214 +201,22 @@ ts = Timestamp()`;
   });
 
   describe("given source with no root assignment", () => {
-    const source = `header = Header("\\uf021", "Orphan")`;
-
     describe("when parsing", () => {
       it("then still produces an element (parser infers root)", () => {
-        // The parser resolves a single top-level statement as root
-        const { element } = parseOpenUILang(source, library);
+        const { element } = parseOpenUILang(`header = Header("sync", "Orphan")`, library);
         expect(element).toBeDefined();
       });
     });
   });
 
   describe("given source with unresolved references", () => {
-    const source = `root = Canvas([header, missing, ts])
-header = Header("\\uf021", "Test")
-ts = Timestamp()`;
+    const source = `root = Canvas([header, missing, ts])\nheader = Header("sync", "Test")\nts = Timestamp()`;
 
     describe("when parsing", () => {
       it("then returns warnings about unresolved references", () => {
         const { warnings } = parseOpenUILang(source, library);
         expect(warnings.length).toBeGreaterThan(0);
         expect(warnings[0]).toContain("missing");
-      });
-    });
-  });
-
-  describe("given source with optional props omitted", () => {
-    const source = `root = Canvas([content, ts])
-content = Content([txt])
-txt = Text("Just text")
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then uses defaults for omitted optional props", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with gauge dashboard pattern", () => {
-    const source = `root = Canvas([grid, ts])
-grid = Stack([g1, g2, g3, g4], "row", "md", "center", "center", true)
-g1 = Gauge("CPU", 73, 100, "%")
-g2 = Gauge("RAM", 4.2, 8, "GB")
-g3 = Gauge("Disk", 120, 500, "GB")
-g4 = Gauge("Temp", 62, 100, "°C")
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then handles the gauge grid pattern", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with inline component references", () => {
-    const source = `root = Canvas([content, ts])
-content = Content([list])
-list = List([ListItem("A"), ListItem("B"), ListItem("C")])
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then handles inline component construction in arrays", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with boolean props", () => {
-    const source = `root = Canvas([content, ts])
-content = Content([row])
-row = Stack([StatusDot(true), StatusDot(false)], "row", "md")
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then handles boolean values in props", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with numeric array values", () => {
-    const source = `root = Canvas([content, ts])
-content = Content([spark])
-spark = Sparkline([1, 2, 3, 4, 5])
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then parses numeric arrays correctly", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with CodeBlock", () => {
-    const source = `root = Canvas([content, ts])
-content = Content([code])
-code = CodeBlock("typescript", "const x = 42;")
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then accepts CodeBlock with language and code", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with Steps", () => {
-    const source = `root = Canvas([content, ts])
-content = Content([steps])
-steps = Steps([StepsItem("First", "Do this"), StepsItem("Second", "Then this"), StepsItem("Third")])
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then accepts Steps with StepsItem children", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with TagBlock and Tags", () => {
-    const source = `root = Canvas([content, ts])
-content = Content([tags])
-tags = TagBlock([Tag("TypeScript", "\\uf121", "accent"), Tag("React", "\\uf41b", "cyan"), Tag("Plain")])
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then accepts TagBlock with Tag children", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with Card variant", () => {
-    const source = `root = Canvas([content, ts])
-content = Content([c1, c2, c3])
-c1 = Card([Text("Default card")])
-c2 = Card([Text("Sunk card")], "sunk")
-c3 = Card([Text("Clear card")], "clear")
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then accepts Card with variant prop", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with Col type", () => {
-    const source = `root = Canvas([content, ts])
-content = Content([tbl])
-tbl = Table(cols, rows)
-cols = [Col("Name", "string"), Col("Score", "number")]
-rows = [["Alice", "95"], ["Bob", "87"]]
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then accepts Col with type prop", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with Stack baseline and evenly", () => {
-    const source = `root = Canvas([content, ts])
-content = Content([row])
-row = Stack([Text("A", "xl"), Text("B", "sm")], "row", "md", "baseline", "evenly")
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then accepts baseline align and evenly justify", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
-      });
-    });
-  });
-
-  describe("given source with null props", () => {
-    const source = `root = Canvas([content, ts])
-content = Content([stat])
-stat = Stat("Revenue", "$24.8k", null, "+12%", "green")
-ts = Timestamp()`;
-
-    describe("when parsing", () => {
-      it("then handles null positional arguments", () => {
-        const { element, warnings } = parseOpenUILang(source, library);
-        expect(element).toBeDefined();
-        expect(warnings).toHaveLength(0);
       });
     });
   });

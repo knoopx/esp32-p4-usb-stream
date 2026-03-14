@@ -10,9 +10,9 @@ import React from "react";
 import { execSync } from "child_process";
 import { emit } from "../src/openui-emitter";
 import {
-  Canvas, Header, Content, Stack, Text, Icon, Separator, Badge, List, ListItem, Spacer, Timestamp,
+  Canvas, Header, Content, Stack, Text, Icon, Separator, Badge, List, ListItem, Timestamp,
 } from "../src/components";
-import { ICON_SIZE } from "../src/tokens";
+import { UI } from "../src/tokens";
 
 const argv = process.argv.slice(2);
 let lat = 41.39, lon = 2.17;
@@ -33,7 +33,7 @@ const months = ["January", "February", "March", "April", "May", "June", "July", 
 const dateStr = `${days[now.getDay()]}, ${months[now.getMonth()]} ${now.getDate()}`;
 
 // Weather
-let temp = "?", feelsLike = "", humidity = "";
+let temp = "?", feelsLike = "";
 try {
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code&timezone=auto`;
   const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
@@ -42,7 +42,7 @@ try {
     const cur = data.current;
     temp = `${Math.round(cur.temperature_2m)}°C`;
     feelsLike = `Feels ${Math.round(cur.apparent_temperature)}°C`;
-    humidity = `${cur.relative_humidity_2m}%`;
+
   }
 } catch { /* offline */ }
 
@@ -85,7 +85,7 @@ try {
 emit(
   <Canvas>
     <Header
-      icon={<Icon glyph={"\uf017"} color="accent" size={ICON_SIZE.md} />}
+      icon={<Icon glyph={"\uf017"} color="accent" size={UI.icon.defaultSize} />}
       title={[<Text content={time} size="lg" weight="bold" />, <Text content={dateStr} size="md" color="muted" />]}
       subtitle={[<Icon glyph={"\ue302"} color="accent" />, <Text content={temp} size="md" weight="bold" />, ...(feelsLike ? [<Text content={feelsLike} size="sm" color="muted" />] : [])]}
     />

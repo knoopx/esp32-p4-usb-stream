@@ -7,7 +7,7 @@ import { Resvg } from "@resvg/resvg-js";
 import sharp from "sharp";
 import { readFileSync, existsSync } from "fs";
 import { resolve, dirname } from "path";
-import { DISPLAY_WIDTH, DISPLAY_HEIGHT } from "./tokens";
+import { UI } from "./tokens";
 
 let fontData: ArrayBuffer | null = null;
 let fontBoldData: ArrayBuffer | null = null;
@@ -62,8 +62,8 @@ export async function rasterize(
   element: React.ReactElement,
   opts: RasterizeOptions = {},
 ): Promise<Buffer> {
-  const width = opts.width ?? DISPLAY_WIDTH;
-  const height = opts.height ?? DISPLAY_HEIGHT;
+  const width = opts.width ?? UI.canvas.width;
+  const height = opts.height ?? UI.canvas.height;
   const rotate = opts.rotate ?? 0;
 
   loadFonts();
@@ -71,13 +71,13 @@ export async function rasterize(
   const fonts: Parameters<typeof satori>[1]["fonts"] = [];
   if (fontData) {
     fonts.push({
-      name: "Inter",
+      name: UI.fontFamily.text,
       data: fontData,
       weight: 400,
       style: "normal" as const,
     });
     fonts.push({
-      name: "Inter",
+      name: UI.fontFamily.text,
       data: fontBoldData!,
       weight: 700,
       style: "normal" as const,
@@ -85,7 +85,7 @@ export async function rasterize(
   }
   if (nerdFontData) {
     fonts.push({
-      name: "Nerd",
+      name: UI.fontFamily.icon,
       data: nerdFontData,
       weight: 700,
       style: "normal" as const,

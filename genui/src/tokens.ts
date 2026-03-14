@@ -1,43 +1,29 @@
 /**
  * Design tokens — single source of truth for visual consistency.
+ *
+ * Everything lives under `UI`. No other exported constants.
+ * `semanticColor()` is the only exported function.
  */
 
 import { resolveColor, lerpColor } from "./theme";
 
-// ─── Display ──────────────────────────────────────────────────────────────────
+// ─── Private building blocks (used only to assemble UI) ──────────────────────
 
-export const DISPLAY_WIDTH = 720;
-export const DISPLAY_HEIGHT = 720;
+const DISPLAY = { width: 720, height: 720 } as const;
+const PADDING = 24;
 
-// ─── Spacing ──────────────────────────────────────────────────────────────────
+const SPACE = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 } as const;
+const FONT = { xs: 20, sm: 22, md: 26, lg: 30, xl: 36, "2xl": 44, "3xl": 80 } as const;
+const FONT_WEIGHT = { normal: 400, bold: 700 } as const;
+const RADIUS = { xs: 3, sm: 8, md: 16, pill: 999 } as const;
+const ICON_SIZE = { sm: 28, md: 32, lg: 40 } as const;
+const ROW = { single: 52, double: 76, detail: 48 } as const;
 
-export const SPACE = {
-  xs: 4,
-  sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
-} as const;
+const BG = resolveColor("base00");
+const FG = resolveColor("base05");
+const ACCENT = resolveColor("base0A");
 
-export type SpaceKey = keyof typeof SPACE;
-
-export const PADDING = 24;
-
-// ─── Row heights ──────────────────────────────────────────────────────────────
-
-export const ROW_SINGLE = 52;
-export const ROW_DOUBLE = 76;
-export const ROW_DETAIL = 48;
-
-// ─── Theme base colors ────────────────────────────────────────────────────────
-
-export const BG = resolveColor("base00");
-export const FG = resolveColor("base05");
-export const ACCENT = resolveColor("base0A");
-
-// ─── Surface colors (derived from BG/FG blending) ────────────────────────────
-
-export const surface = {
+const surface = {
   muted: () => lerpColor(FG, BG, 0.3),
   dim: () => lerpColor(FG, BG, 0.45),
   separator: () => lerpColor(BG, FG, 0.1),
@@ -50,15 +36,8 @@ export const surface = {
 // ─── Semantic colors ──────────────────────────────────────────────────────────
 
 export const SEMANTIC_COLOR_NAMES = [
-  "default",
-  "muted",
-  "accent",
-  "green",
-  "red",
-  "yellow",
-  "cyan",
-  "orange",
-  "purple",
+  "default", "muted", "accent",
+  "green", "red", "yellow", "cyan", "orange", "purple",
 ] as const;
 
 export type SemanticColor = (typeof SEMANTIC_COLOR_NAMES)[number];
@@ -80,64 +59,135 @@ export function semanticColor(name: string): string {
   return fn ? fn() : FG;
 }
 
-// ─── Palette (for indexed items like list bullets) ────────────────────────────
+// ─── Icon registry ────────────────────────────────────────────────────────────
 
-export function paletteColor(i: number): string {
-  const palette = [
-    semanticColor("accent"),
-    semanticColor("green"),
-    semanticColor("orange"),
-    semanticColor("purple"),
-    semanticColor("red"),
-    semanticColor("cyan"),
-    semanticColor("yellow"),
-    FG,
-  ];
-  return palette[i % palette.length];
+const ICONS = {
+  // Status
+  check: "\uf058",
+  warning: "\uf071",
+  error: "\uf06a",
+  info: "\uf05a",
+  question: "\uf059",
+
+  // Navigation / UI
+  home: "\uf015",
+  search: "\uf002",
+  settings: "\uf085",
+  menu: "\uf0c9",
+  list: "\uf03a",
+  grid: "\uf00a",
+  edit: "\uf044",
+  sync: "\uf021",
+  refresh: "\uf021",
+
+  // Objects
+  clock: "\uf017",
+  calendar: "\uf073",
+  mail: "\uf0e0",
+  bell: "\uf0f3",
+  lock: "\uf023",
+  globe: "\uf0ac",
+  link: "\uf0c1",
+  file: "\uf15b",
+  folder: "\uf07b",
+  image: "\uf03e",
+  music: "\uf001",
+  video: "\uf008",
+  camera: "\uf030",
+  lightbulb: "\uf0eb",
+  bolt: "\uf0e7",
+  tag: "\uf02c",
+  bookmark: "\uf02e",
+  star: "\uf005",
+  heart: "\uf004",
+  user: "\uf007",
+  users: "\uf0c0",
+  cart: "\uf07a",
+  database: "\uf1c0",
+  server: "\uf233",
+  desktop: "\uf108",
+  cloud: "\uf0c2",
+  wifi: "\uf1eb",
+  rss: "\uf09e",
+
+  // Arrows / Direction
+  up: "\uf062",
+  down: "\uf063",
+  left: "\uf060",
+  right: "\uf061",
+  location: "\uf124",
+
+  // Data / Charts
+  chart: "\uf201",
+  bars: "\uf080",
+  table: "\uf0ce",
+  steps: "\uf0ae",
+
+  // Actions
+  play: "\uf04b",
+  pause: "\uf04c",
+  stop: "\uf04d",
+  download: "\uf019",
+  upload: "\uf093",
+  trash: "\uf1f8",
+  plus: "\uf067",
+  minus: "\uf068",
+  toggle: "\uf205",
+
+  // Development
+  code: "\uf121",
+  bug: "\uf188",
+  git: "\uf126",
+  github: "\uf09b",
+  terminal: "\uf120",
+  cpu: "\uf2db",
+  memory: "\uf538",
+  disk: "\uf0a0",
+  thermometer: "\uf2c9",
+
+  // Transport
+  train: "\uf238",
+  rocket: "\uf135",
+
+  // Brands / Tech
+  docker: "\uf308",
+  nix: "\uf313",
+  react: "\uf41b",
+  rust: "\ue7a8",
+  python: "\ue73c",
+
+  // Misc
+  circle: "\uf111",
+  dot: "\uf192",
+  shield: "\uf132",
+  flag: "\uf024",
+  trophy: "\uf091",
+  monitor: "\uf21b",
+  qrcode: "\uf029",
+  palette: "\uf53f",
+} as const;
+
+export type IconName = keyof typeof ICONS;
+export const ICON_NAMES = Object.keys(ICONS) as IconName[];
+
+export function resolveIcon(name: string): string {
+  return ICONS[name as IconName] ?? name;
 }
 
-// ─── Font ─────────────────────────────────────────────────────────────────────
-
-export const FONT = {
-  xs: 20,
-  sm: 22,
-  md: 26,
-  lg: 30,
-  xl: 36,
-  "2xl": 44,
-  "3xl": 80,
-} as const;
-
-export type FontSize = keyof typeof FONT;
-
-export const FONT_WEIGHT = {
-  normal: 400,
-  bold: 700,
-} as const;
-
-// ─── Radii ────────────────────────────────────────────────────────────────────
-
-export const RADIUS = {
-  xs: 3,
-  sm: 8,
-  md: 16,
-  pill: 999,
-} as const;
-
-// ─── Icon sizes ───────────────────────────────────────────────────────────────
-
-export const ICON_SIZE = {
-  sm: 28,
-  md: 32,
-  lg: 40,
-} as const;
-
-// ─── Core UI element tokens ───────────────────────────────────────────────────
+// ─── UI — the single exported token tree ──────────────────────────────────────
 
 export const UI = {
+  color: { bg: BG, fg: FG, accent: ACCENT },
+  surface,
+  space: SPACE,
+  font: FONT,
+  fontWeight: FONT_WEIGHT,
+  fontFamily: { text: "Inter", icon: "Nerd" },
+  radius: RADIUS,
+
   canvas: {
-    width: DISPLAY_WIDTH,
-    height: DISPLAY_HEIGHT,
+    width: DISPLAY.width,
+    height: DISPLAY.height,
   },
   header: {
     accentBarHeight: 6,
@@ -158,6 +208,9 @@ export const UI = {
   },
   text: {
     lineHeight: 1.2,
+  },
+  icon: {
+    defaultSize: ICON_SIZE.sm,
   },
   badge: {
     fontSize: FONT.sm,
@@ -187,7 +240,7 @@ export const UI = {
     background: surface.card,
   },
   keyValue: {
-    minHeight: ROW_SINGLE,
+    minHeight: ROW.single,
     gap: SPACE.md,
     labelSize: FONT.sm,
     valueSize: FONT.md,
@@ -208,20 +261,21 @@ export const UI = {
     color: surface.separator,
   },
   table: {
-    headerHeight: ROW_DETAIL,
-    rowHeight: ROW_DETAIL,
+    headerHeight: ROW.detail,
+    rowHeight: ROW.detail,
     headerFontSize: FONT.md,
     cellFontSize: FONT.sm,
     cellPaddingX: SPACE.xs,
     zebraBackground: surface.card,
   },
   list: {
-    rowSingleHeight: ROW_SINGLE,
-    rowDoubleHeight: ROW_DOUBLE,
+    rowSingleHeight: ROW.single,
+    rowDoubleHeight: ROW.double,
     rowGap: SPACE.lg,
     rowPaddingY: SPACE.xs,
     bulletWidth: 8,
     bulletRadius: RADIUS.xs,
+    iconSize: ICON_SIZE.sm,
     textSize: FONT.md,
     secondarySize: FONT.sm,
     valueSize: FONT.md,
@@ -229,11 +283,20 @@ export const UI = {
   },
   progressBar: {
     labelGap: SPACE.sm,
+    labelSize: FONT.lg,
+    valueSize: FONT.md,
     height: 20,
   },
   gauge: {
     defaultSize: 240,
     stroke: 14,
+    arcStart: -135,
+    arcEnd: 135,
+    arcSweep: 2.7,
+    valueFontRatio: 0.22,
+    unitFontRatio: 0.12,
+    labelFontRatio: 0.12,
+    labelBottomRatio: 0.08,
   },
   sparkline: {
     stroke: 2,
@@ -247,38 +310,29 @@ export const UI = {
     inset: PADDING,
     fontSize: FONT.sm,
   },
+  codeBlock: {
+    languageSize: FONT.xs,
+    codeSize: FONT.sm,
+    codeLineHeight: 1.4,
+  },
+  steps: {
+    gap: SPACE.sm,
+    circleSize: 32,
+    numberSize: FONT.sm,
+    titleSize: FONT.md,
+    detailsSize: FONT.sm,
+  },
+  tagBlock: {
+    gap: SPACE.sm,
+    iconSize: FONT.sm,
+    textSize: FONT.sm,
+  },
   qrcode: {
     defaultSize: 400,
   },
-} as const;
-
-export const ACCENT_BAR_HEIGHT = UI.header.accentBarHeight;
-
-// ─── Component-specific sizes ─────────────────────────────────────────────────
-
-export const SIZE = {
-  separator: UI.separator.thickness,
-  statusDot: UI.statusDot.size,
-  listBulletWidth: UI.list.bulletWidth,
-  listBulletHeight: 14,
-  progressBarHeight: UI.progressBar.height,
-  gaugeStroke: UI.gauge.stroke,
-  gaugeDefault: UI.gauge.defaultSize,
-  sparklineStroke: UI.sparkline.stroke,
-  sparklineHeight: UI.sparkline.height,
-  sparklinePad: UI.sparkline.pad,
+  image: {
+    defaultWidth: DISPLAY.width,
+    defaultHeight: DISPLAY.height,
+  },
   svgViewBoxWidth: 600,
-  qrCodeDefault: UI.qrcode.defaultSize,
-} as const;
-
-// ─── Gauge arc geometry ───────────────────────────────────────────────────────
-
-export const GAUGE = {
-  arcStart: -135,
-  arcEnd: 135,
-  arcSweep: 2.7,
-  valueFontRatio: 0.22,
-  unitFontRatio: 0.12,
-  labelFontRatio: 0.12,
-  labelBottomRatio: 0.08,
 } as const;

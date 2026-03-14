@@ -8,7 +8,7 @@ import React from "react";
 import { emit } from "../src/openui-emitter";
 import { execSync } from "child_process";
 import {
-  Canvas, Header, Content, List, ListItem, Stack, Text, StatusDot, Timestamp,
+  Canvas, Header, Content, List, ListItem, Timestamp,
 } from "../src/components";
 
 const argv = process.argv.slice(2);

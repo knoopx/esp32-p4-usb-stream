@@ -1,0 +1,13 @@
+{
+  "entry": [
+    "examples/*.tsx",
+    "scripts/*.tsx",
+    "src/**/*.test.{ts,tsx}"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "examples/**/*.tsx",
+    "scripts/**/*.tsx"
+  ],
+  "ignoreExportsUsedInFile": true
+}
