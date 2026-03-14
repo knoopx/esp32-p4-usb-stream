@@ -13,6 +13,10 @@ const RESPONSE_OK = 0x01;
 export const CMD_OFF = 0x00;
 export const CMD_ON = 0x01;
 
+export const PRIO_LOW = 0x00;
+export const PRIO_NORMAL = 0x01;
+export const PRIO_HIGH = 0x02;
+
 function readByte(port: SerialPort, timeout = 5000): Promise<number | null> {
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
@@ -68,12 +72,14 @@ export async function sendCommand(
 export async function sendFrame(
   port: SerialPort,
   data: Buffer,
+  priority: number = PRIO_NORMAL,
 ): Promise<boolean> {
   const header = Buffer.alloc(12);
   FRAME_MAGIC.copy(header, 0);
   header.writeUInt32LE(data.length, 4);
   header.writeUInt16LE(CHUNK_SIZE, 8);
-  header.writeUInt16LE(0, 10);
+  header[10] = priority;
+  header[11] = 0;
 
   await write(port, header);
   const headerResponse = await readByte(port);

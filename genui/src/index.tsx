@@ -12,6 +12,7 @@
  *   waveshare-genui on|off                 Display power control
  *   -o, --output <file.png>                Write PNG instead of sending
  *   -p, --port <path>                      Serial port (default /dev/ttyACM0)
+ *   --priority <low|normal|high>           Frame priority (default: normal)
  *   --theme <file>                         Base16 theme JSON
  *   --rotate <degrees>                     Optional output rotation (default: 180)
  */
@@ -28,6 +29,9 @@ import {
   disconnect,
   CMD_ON,
   CMD_OFF,
+  PRIO_LOW,
+  PRIO_NORMAL,
+  PRIO_HIGH,
 } from "./serial";
 import { library, promptOptions } from "./library";
 import sharp from "sharp";
@@ -38,7 +42,14 @@ let port = "/dev/ttyACM0";
 let theme: string | undefined;
 let output: string | undefined;
 let rotate = 180;
+let priority = PRIO_NORMAL;
 const positionals: string[] = [];
+
+const PRIORITY_MAP: Record<string, number> = {
+  low: PRIO_LOW,
+  normal: PRIO_NORMAL,
+  high: PRIO_HIGH,
+};
 
 const argv = process.argv.slice(2);
 for (let i = 0; i < argv.length; i++) {
@@ -47,7 +58,14 @@ for (let i = 0; i < argv.length; i++) {
   else if (a === "--theme" && argv[i + 1]) theme = argv[++i];
   else if ((a === "--output" || a === "-o") && argv[i + 1]) output = argv[++i];
   else if (a === "--rotate" && argv[i + 1]) rotate = Number(argv[++i]);
-  else positionals.push(a);
+  else if (a === "--priority" && argv[i + 1]) {
+    const val = argv[++i].toLowerCase();
+    if (!(val in PRIORITY_MAP)) {
+      console.error(`Invalid --priority: ${val} (expected low, normal, high)`);
+      process.exit(1);
+    }
+    priority = PRIORITY_MAP[val];
+  } else positionals.push(a);
 }
 
 if (!Number.isFinite(rotate)) {
@@ -87,10 +105,11 @@ Usage:
   waveshare-genui on|off           Display power control
 
 Options:
-  -p, --port <path>    Serial port (default: /dev/ttyACM0)
-  -o, --output <file>  Write PNG instead of sending to display
-  --theme <file>       Base16 theme JSON
-  --rotate <degrees>   Optional output rotation (default: 180)`);
+  -p, --port <path>        Serial port (default: /dev/ttyACM0)
+  -o, --output <file>      Write PNG instead of sending to display
+  --priority <level>       Frame priority: low, normal, high (default: normal)
+  --theme <file>           Base16 theme JSON
+  --rotate <degrees>       Optional output rotation (default: 180)`);
   process.exit(1);
 }
 
@@ -145,7 +164,7 @@ if (output) {
   console.log(`${output} (${Math.floor(png.length / 1024)} KB)`);
 } else {
   const serial = await connect(port);
-  const ok = await sendFrame(serial, webp);
+  const ok = await sendFrame(serial, webp, priority);
   console.log(`${ok ? "OK" : "FAIL"} (${Math.floor(webp.length / 1024)} KB)`);
   await disconnect(serial);
 }
