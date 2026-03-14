@@ -110,8 +110,11 @@ esp_err_t bsp_display_set_brightness(int percent)
 {
     if (percent < 0)   percent = 0;
     if (percent > 100) percent = 100;
-    int actual = 47 + (percent * 53) / 100;
-    uint32_t duty = (1023 * actual) / 100;
+    uint32_t duty = 0;
+    if (percent > 0) {
+        int actual = 47 + (percent * 53) / 100;
+        duty = (1023 * actual) / 100;
+    }
     ESP_RETURN_ON_ERROR(ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CH, duty), TAG, "set duty");
     return ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CH);
 }
